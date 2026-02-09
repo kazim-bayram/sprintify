@@ -23,13 +23,6 @@ Open-source, keyboard-first, gamified Agile project management tool. Faster than
 - A [Supabase](https://supabase.com) project (free tier works)
 
 ### Setup
-
-1. **Clone and install:**
-
-```bash
-git clone https://github.com/your-org/sprintify.git
-cd sprintify
-npm install
 ```
 
 2. **Configure environment variables:**
