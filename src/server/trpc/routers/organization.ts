@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "@/server/trpc/init";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
+import { generateJoinCode } from "@/lib/constants";
 
 export const organizationRouter = createTRPCRouter({
   /**
@@ -57,6 +58,7 @@ export const organizationRouter = createTRPCRouter({
           data: {
             name: input.name,
             slug: input.slug,
+            joinCode: generateJoinCode(input.slug),
           },
         });
 
@@ -70,6 +72,25 @@ export const organizationRouter = createTRPCRouter({
 
         return org;
       });
+    }),
+
+  /**
+   * Public lookup by join code — used during sign-up to validate team codes.
+   */
+  lookupByJoinCode: publicProcedure
+    .input(z.object({ code: z.string().min(3).max(16) }))
+    .query(async ({ ctx, input }) => {
+      const code = input.code.toUpperCase();
+      const org = await ctx.db.organization.findFirst({
+        where: { joinCode: code },
+        select: { id: true, name: true, slug: true, joinCode: true },
+      });
+
+      if (!org) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Team code not found. Please check and try again." });
+      }
+
+      return org;
     }),
 
   /**

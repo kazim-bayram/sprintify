@@ -157,6 +157,14 @@ export function generateAccessCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+/** Generate a human-friendly 6-char join code for organizations, e.g. "ETI-9X" */
+export function generateJoinCode(seed: string): string {
+  const base = (seed || "TEAM").replace(/[^A-Za-z]/g, "").toUpperCase() || "TEAM";
+  const prefix = base.slice(0, 3).padEnd(3, "X");
+  const random = Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3);
+  return `${prefix}-${random}`;
+}
+
 // =============================================================================
 // Project Methodology / Hybrid Project Engine
 // =============================================================================

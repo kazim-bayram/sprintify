@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/projects";
+  const joinCode = searchParams.get("joinCode");
 
   if (code) {
     const supabase = await createClient();
@@ -46,8 +47,31 @@ export async function GET(request: Request) {
         },
       });
 
-      // If user has no org, redirect to onboarding
-      if (user.memberships.length === 0) {
+      // If a joinCode was provided and user has no org yet, attach them to that organization
+      if (user.memberships.length === 0 && joinCode) {
+        const org = await db.organization.findFirst({
+          where: { joinCode: joinCode.toUpperCase() },
+        });
+
+        if (org) {
+          await db.membership.create({
+            data: {
+              userId: user.id,
+              organizationId: org.id,
+              role: "MEMBER",
+            },
+          });
+        }
+      }
+
+      // Reload memberships to determine redirect
+      const refreshed = await db.user.findUnique({
+        where: { id: user.id },
+        include: { memberships: true },
+      });
+
+      // If user still has no org, redirect to onboarding
+      if (!refreshed || refreshed.memberships.length === 0) {
         return NextResponse.redirect(`${origin}/onboarding`);
       }
 

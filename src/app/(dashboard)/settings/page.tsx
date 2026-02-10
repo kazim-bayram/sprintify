@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Users, Tags, Building2, Shield } from "lucide-react";
+import { Users, Tags, Building2, Shield, Lock } from "lucide-react";
 
 export const metadata = {
   title: "Settings — Sprintify",
@@ -24,6 +24,12 @@ const settingsSections = [
     description: "Configure workflows, columns, WIP limits, and custom fields.",
     href: "/admin/settings",
     icon: Shield,
+  },
+  {
+    name: "Security",
+    description: "Manage your password and authentication methods.",
+    href: "/settings/security",
+    icon: Lock,
   },
   {
     name: "Organization",
@@ -68,3 +74,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
