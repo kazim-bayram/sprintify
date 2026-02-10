@@ -156,3 +156,29 @@ export type VotingTypeValue = (typeof VOTING_TYPES)[number]["value"];
 export function generateAccessCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
+
+// =============================================================================
+// Project Methodology / Hybrid Project Engine
+// =============================================================================
+
+export const METHODOLOGIES = [
+  { value: "AGILE", label: "Agile", description: "Sprints, Backlogs, Velocity", icon: "Kanban" },
+  { value: "WATERFALL", label: "Waterfall", description: "Gantt, Phases, Milestones", icon: "GanttChart" },
+  { value: "HYBRID", label: "Hybrid", description: "Phases containing Sprints", icon: "Layers" },
+] as const;
+export type MethodologyValue = (typeof METHODOLOGIES)[number]["value"];
+
+// Default phases for Waterfall/Hybrid projects
+export const DEFAULT_WATERFALL_PHASES = [
+  { name: "Feasibility", color: "#3B82F6", position: 0 },
+  { name: "Development", color: "#22C55E", position: 1 },
+  { name: "Testing / Validation", color: "#F97316", position: 2 },
+  { name: "Production Scale-Up", color: "#8B5CF6", position: 3 },
+  { name: "Launch", color: "#EF4444", position: 4 },
+] as const;
+
+// Gantt chart colors for phases
+export const PHASE_COLORS = [
+  "#3B82F6", "#22C55E", "#F97316", "#8B5CF6", "#EF4444",
+  "#EAB308", "#06B6D4", "#EC4899", "#14B8A6", "#6366F1",
+] as const;

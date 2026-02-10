@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban, ListTodo, Timer, Layers, Package, Shield, Grid3X3, BarChart3,
+  LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban, ListTodo, Timer, Layers, Package, Shield, Grid3X3, BarChart3, GanttChart,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 
 const navigation = [
   { name: "Programs", href: "/programs", icon: Layers },
   { name: "Projects", href: "/projects", icon: FolderKanban },
+  { name: "Planning Poker", href: "/poker", icon: BarChart3 },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Members", href: "/settings/members", icon: Users },
   { name: "Admin", href: "/admin/settings", icon: Shield },
@@ -26,6 +27,7 @@ export function Sidebar() {
   const projectSubNav = projectSlug
     ? [
         { name: "Sprint Board", href: `/projects/${projectSlug}/board`, icon: Kanban },
+        { name: "Timeline", href: `/projects/${projectSlug}/timeline`, icon: GanttChart },
         { name: "Product Backlog", href: `/projects/${projectSlug}/product-backlog`, icon: Package },
         { name: "Planning Grid", href: `/projects/${projectSlug}/planner`, icon: Grid3X3 },
         { name: "Backlog List", href: `/projects/${projectSlug}/backlog`, icon: ListTodo },
@@ -70,7 +72,7 @@ export function Sidebar() {
           <Command className="h-3 w-3" />
           <span><kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">⌘K</kbd> to search</span>
         </div>
-        <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.6.0 — Collab</p>
+        <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.7.0 — Hybrid Engine</p>
       </div>
     </aside>
   );

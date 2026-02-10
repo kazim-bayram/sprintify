@@ -143,15 +143,18 @@ model Program {
 // =============================================================================
 
 model Project {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
   key            String // e.g., "PROTBAR" for story IDs like PROTBAR-42
-  description    String?  @db.Text
-  programId      String?  @map("program_id")
-  organizationId String   @map("organization_id")
-  storyCounter   Int      @default(0) @map("story_counter")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  description    String?       @db.Text
+  methodology    Methodology   @default(AGILE)
+  startDate      DateTime?     @map("start_date")
+  endDate        DateTime?     @map("end_date") // Target launch date
+  programId      String?       @map("program_id")
+  organizationId String        @map("organization_id")
+  storyCounter   Int           @default(0) @map("story_counter")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   program            Program?            @relation(fields: [programId], references: [id], onDelete: SetNull)
   organization       Organization        @relation(fields: [organizationId], references: [id])
@@ -159,10 +162,17 @@ model Project {
   stories            UserStory[]
   boardColumns       BoardColumn[]
   sprints            Sprint[]
+  phases             Phase[]
   estimationSessions EstimationSession[]
 
   @@unique([organizationId, key])
   @@map("projects")
+}
+
+enum Methodology {
+  AGILE     // Sprints, Backlogs, Velocity
+  WATERFALL // Gantt, Phases, Milestones
+  HYBRID    // Phases containing Sprints
 }
 
 // =============================================================================
@@ -182,6 +192,47 @@ model Feature {
   stories UserStory[]
 
   @@map("features")
+}
+
+// =============================================================================
+// Phase (Waterfall / Hybrid container for Gantt-based projects)
+// e.g., "Feasibility Study", "Production Scale-Up", "Regulatory Filing"
+// =============================================================================
+
+model Phase {
+  id          String    @id @default(cuid())
+  name        String
+  description String?   @db.Text
+  color       String    @default("#3B82F6") // For Gantt visualization
+  position    Int       @default(0)
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  progress    Int       @default(0) // 0-100 percentage
+  projectId   String    @map("project_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stories UserStory[]
+  sprints Sprint[]    // In Hybrid mode, Sprints can live inside a Phase
+
+  // Self-referencing dependencies: "this phase depends on these predecessors"
+  dependsOn    PhaseDependency[] @relation("PhaseSuccessor")
+  dependedOnBy PhaseDependency[] @relation("PhasePredecessor")
+
+  @@index([projectId])
+  @@map("phases")
+}
+
+model PhaseDependency {
+  predecessorId String @map("predecessor_id")
+  successorId   String @map("successor_id")
+
+  predecessor Phase @relation("PhasePredecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor   Phase @relation("PhaseSuccessor", fields: [successorId], references: [id], onDelete: Cascade)
+
+  @@id([predecessorId, successorId])
+  @@map("phase_dependencies")
 }
 
 // =============================================================================
@@ -260,11 +311,13 @@ model Sprint {
   endDate        DateTime?    @map("end_date")
   status         SprintStatus @default(PLANNING)
   projectId      String       @map("project_id")
+  phaseId        String?      @map("phase_id") // Hybrid: Sprint lives inside a Phase
   organizationId String       @map("organization_id")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase     Phase?           @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   stories   UserStory[]
   snapshots SprintSnapshot[]
 
@@ -323,6 +376,7 @@ model UserStory {
   // Relations
   projectId      String      @map("project_id")
   featureId      String?     @map("feature_id")
+  phaseId        String?     @map("phase_id") // Waterfall/Hybrid: belongs to a Phase
   columnId       String?     @map("column_id")
   sprintId       String?     @map("sprint_id")
   assigneeId     String?     @map("assignee_id")
@@ -334,6 +388,7 @@ model UserStory {
 
   project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   feature    Feature?     @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  phase      Phase?       @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   column     BoardColumn? @relation(fields: [columnId], references: [id], onDelete: SetNull)
   sprint     Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   assignee   User?        @relation("StoryAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
@@ -353,6 +408,7 @@ model UserStory {
   @@index([assigneeId])
   @@index([sprintId])
   @@index([featureId])
+  @@index([phaseId])
   @@map("user_stories")
 }
 

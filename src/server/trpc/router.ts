@@ -14,6 +14,7 @@ import { checklistRouter } from "./routers/checklist";
 import { adminRouter } from "./routers/admin";
 import { pokerRouter } from "./routers/poker";
 import { plannerRouter } from "./routers/planner";
+import { phaseRouter } from "./routers/phase";
 
 /**
  * Root tRPC router — all sub-routers merged here.
@@ -35,6 +36,7 @@ export const appRouter = createTRPCRouter({
   admin: adminRouter,
   poker: pokerRouter,
   planner: plannerRouter,
+  phase: phaseRouter,
 });
 
 export type AppRouter = typeof appRouter;

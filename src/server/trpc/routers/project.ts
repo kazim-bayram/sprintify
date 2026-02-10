@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
-import { DEFAULT_BOARD_COLUMNS } from "@/lib/constants";
+import { DEFAULT_BOARD_COLUMNS, DEFAULT_WATERFALL_PHASES } from "@/lib/constants";
 
 export const projectRouter = createTRPCRouter({
   /** List all projects for the current organization */
@@ -25,6 +25,13 @@ export const projectRouter = createTRPCRouter({
         include: {
           program: { select: { id: true, name: true } },
           features: { orderBy: { position: "asc" } },
+          phases: {
+            orderBy: { position: "asc" },
+            include: {
+              _count: { select: { stories: true, sprints: true } },
+              dependsOn: { include: { predecessor: { select: { id: true, name: true } } } },
+            },
+          },
           boardColumns: {
             where: { boardType: input.boardType },
             orderBy: { position: "asc" },
@@ -49,13 +56,16 @@ export const projectRouter = createTRPCRouter({
       return project;
     }),
 
-  /** Create a new project with default columns for both board types */
+  /** Create a new project with default columns and optional phases */
   create: orgProcedure
     .input(z.object({
       name: z.string().min(1).max(100),
       key: z.string().min(2).max(10).regex(/^[A-Z0-9]+$/, "Key must be uppercase alphanumeric"),
       description: z.string().max(500).optional(),
       programId: z.string().optional(),
+      methodology: z.enum(["AGILE", "WATERFALL", "HYBRID"]).default("AGILE"),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
@@ -69,14 +79,29 @@ export const projectRouter = createTRPCRouter({
         const project = await tx.project.create({
           data: {
             name: input.name, key: input.key, description: input.description,
+            methodology: input.methodology,
+            startDate: input.startDate ? new Date(input.startDate) : null,
+            endDate: input.endDate ? new Date(input.endDate) : null,
             programId: input.programId, organizationId: ctx.organization.id,
           },
         });
+
+        // Always create board columns (used by all methodologies)
         await tx.boardColumn.createMany({
           data: DEFAULT_BOARD_COLUMNS.map((col) => ({
             name: col.name, position: col.position, colType: col.colType, boardType: col.boardType, projectId: project.id,
           })),
         });
+
+        // For Waterfall and Hybrid, also create default phases
+        if (input.methodology === "WATERFALL" || input.methodology === "HYBRID") {
+          await tx.phase.createMany({
+            data: DEFAULT_WATERFALL_PHASES.map((p) => ({
+              name: p.name, color: p.color, position: p.position, projectId: project.id,
+            })),
+          });
+        }
+
         return project;
       });
     }),

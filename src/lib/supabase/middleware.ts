@@ -19,8 +19,6 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Persist these cookie updates so we can also apply them to redirects.
-          // (We can't rely on mutating request.cookies alone.)
           cookiesToSetForResponse = cookiesToSet.map(({ name, value, options }) => ({
             name,
             value,
@@ -37,20 +35,28 @@ export async function updateSession(request: NextRequest) {
   );
 
   // IMPORTANT: Do NOT run any logic between createServerClient and supabase.auth.getUser().
-  // A simple mistake could lead to very hard-to-debug auth issues.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes: redirect to sign-in if not authenticated
-  const isAuthRoute =
-    request.nextUrl.pathname.startsWith("/sign-in") ||
-    request.nextUrl.pathname.startsWith("/sign-up") ||
-    request.nextUrl.pathname.startsWith("/auth");
+  const pathname = request.nextUrl.pathname;
 
-  // /poker/* is accessible by guests without authentication
-  const isPokerRoute = request.nextUrl.pathname.startsWith("/poker");
-  const isPublicRoute = request.nextUrl.pathname === "/" || isAuthRoute || isPokerRoute;
+  // Auth routes (sign-in, sign-up, callback)
+  const isAuthRoute =
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up") ||
+    pathname.startsWith("/auth");
+
+  // Public routes that don't require authentication:
+  // - / (landing page — shows "Go to Dashboard" if logged in)
+  // - /sign-in, /sign-up, /auth/*
+  // - /poker/* (guest access for planning poker rooms)
+  // - /onboarding
+  const isPublicRoute =
+    pathname === "/" ||
+    isAuthRoute ||
+    pathname.startsWith("/poker") ||
+    pathname === "/onboarding";
 
   function redirectWithCookies(url: URL) {
     const response = NextResponse.redirect(url);
@@ -60,13 +66,15 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
+  // Not logged in + trying to access a protected route → sign-in
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     return redirectWithCookies(url);
   }
 
-  // If user is signed in and tries to access auth pages, redirect to dashboard
+  // Logged in + trying to access auth pages → redirect to projects
+  // (but NOT from / — logged-in users should still see the landing page)
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/projects";

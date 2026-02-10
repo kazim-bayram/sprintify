@@ -6,7 +6,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, FolderKanban } from "lucide-react";
+import { Plus, FolderKanban, Kanban, GanttChart, Layers } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { CreateProjectDialog } from "./create-project-dialog";
@@ -38,25 +38,35 @@ export function ProjectList({ initialProjects }: { initialProjects: ProjectListI
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <Link key={project.id} href={`/projects/${project.key.toLowerCase()}/board`}>
-              <Card className="transition-colors hover:border-primary/50 hover:shadow-sm">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-mono text-xs">{project.key}</Badge>
-                      {project.program && <Badge variant="secondary" className="text-[10px]">{project.program.name}</Badge>}
+          {projects.map((project) => {
+            const slug = project.key.toLowerCase();
+            const href = project.methodology === "AGILE"
+              ? `/projects/${slug}/board`
+              : `/projects/${slug}/timeline`;
+            const MethodIcon = project.methodology === "WATERFALL" ? GanttChart : project.methodology === "HYBRID" ? Layers : Kanban;
+            return (
+              <Link key={project.id} href={href}>
+                <Card className="transition-colors hover:border-primary/50 hover:shadow-sm">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono text-xs">{project.key}</Badge>
+                        {project.program && <Badge variant="secondary" className="text-[10px]">{project.program.name}</Badge>}
+                        <Badge variant="secondary" className="text-[10px] gap-1">
+                          <MethodIcon className="h-3 w-3" />{project.methodology}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {project._count.stories} stor{project._count.stories !== 1 ? "ies" : "y"}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {project._count.stories} stor{project._count.stories !== 1 ? "ies" : "y"}
-                    </span>
-                  </div>
-                  <CardTitle className="text-lg">{project.name}</CardTitle>
-                  {project.description && <CardDescription className="line-clamp-2">{project.description}</CardDescription>}
-                </CardHeader>
-              </Card>
-            </Link>
-          ))}
+                    <CardTitle className="text-lg">{project.name}</CardTitle>
+                    {project.description && <CardDescription className="line-clamp-2">{project.description}</CardDescription>}
+                  </CardHeader>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
       <CreateProjectDialog open={dialogOpen} onOpenChange={setDialogOpen} />
