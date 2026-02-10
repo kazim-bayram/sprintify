@@ -12,6 +12,8 @@ import { featureRouter } from "./routers/feature";
 import { taskRouter } from "./routers/task";
 import { checklistRouter } from "./routers/checklist";
 import { adminRouter } from "./routers/admin";
+import { pokerRouter } from "./routers/poker";
+import { plannerRouter } from "./routers/planner";
 
 /**
  * Root tRPC router — all sub-routers merged here.
@@ -31,6 +33,8 @@ export const appRouter = createTRPCRouter({
   task: taskRouter,
   checklist: checklistRouter,
   admin: adminRouter,
+  poker: pokerRouter,
+  planner: plannerRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -48,7 +48,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/sign-up") ||
     request.nextUrl.pathname.startsWith("/auth");
 
-  const isPublicRoute = request.nextUrl.pathname === "/" || isAuthRoute;
+  // /poker/* is accessible by guests without authentication
+  const isPokerRoute = request.nextUrl.pathname.startsWith("/poker");
+  const isPublicRoute = request.nextUrl.pathname === "/" || isAuthRoute || isPokerRoute;
 
   function redirectWithCookies(url: URL) {
     const response = NextResponse.redirect(url);

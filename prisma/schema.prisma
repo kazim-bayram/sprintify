@@ -35,6 +35,10 @@ model User {
   activities      Activity[]
   attachments     Attachment[]
 
+  // Planning Poker
+  hostedSessions       EstimationSession[]     @relation("SessionHost")
+  estimationParticipations EstimationParticipant[]
+
   @@map("users")
 }
 
@@ -149,12 +153,13 @@ model Project {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  program      Program?      @relation(fields: [programId], references: [id], onDelete: SetNull)
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  features     Feature[]
-  stories      UserStory[]
-  boardColumns BoardColumn[]
-  sprints      Sprint[]
+  program            Program?            @relation(fields: [programId], references: [id], onDelete: SetNull)
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  features           Feature[]
+  stories            UserStory[]
+  boardColumns       BoardColumn[]
+  sprints            Sprint[]
+  estimationSessions EstimationSession[]
 
   @@unique([organizationId, key])
   @@map("projects")
@@ -334,12 +339,13 @@ model UserStory {
   assignee   User?        @relation("StoryAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   reporter   User         @relation("StoryReporter", fields: [reporterId], references: [id])
 
-  tasks       Task[]
-  checklists  ChecklistItem[]
-  comments    Comment[]
-  activities  Activity[]
-  labels      StoryLabel[]
-  attachments Attachment[]
+  tasks            Task[]
+  checklists       ChecklistItem[]
+  comments         Comment[]
+  activities       Activity[]
+  labels           StoryLabel[]
+  attachments      Attachment[]
+  estimationVotes  EstimationVote[]
 
   @@unique([projectId, number])
   @@index([organizationId])
@@ -426,6 +432,80 @@ model Activity {
 
   @@index([storyId])
   @@map("activities")
+}
+
+// =============================================================================
+// Estimation / Planning Poker (Real-Time Collaborative Voting)
+// =============================================================================
+
+model EstimationSession {
+  id             String               @id @default(cuid())
+  name           String               @default("Estimation Session")
+  accessCode     String               @unique @map("access_code")
+  status         EstimationStatus     @default(WAITING)
+  votingType     VotingType           @default(EFFORT)
+  activeStoryId  String?              @map("active_story_id")
+  projectId      String               @map("project_id")
+  organizationId String               @map("organization_id")
+  hostUserId     String               @map("host_user_id")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  project      Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  hostUser     User                   @relation("SessionHost", fields: [hostUserId], references: [id])
+  participants EstimationParticipant[]
+  votes        EstimationVote[]
+
+  @@index([accessCode])
+  @@index([projectId])
+  @@map("estimation_sessions")
+}
+
+model EstimationParticipant {
+  id        String   @id @default(cuid())
+  name      String // Display name (for guests or logged-in users)
+  isHost    Boolean  @default(false) @map("is_host")
+  userId    String?  @map("user_id") // null = guest participant
+  guestId   String?  @map("guest_id") // localStorage-based guest ID
+  sessionId String   @map("session_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session EstimationSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  votes   EstimationVote[]
+
+  @@unique([sessionId, guestId])
+  @@index([sessionId])
+  @@map("estimation_participants")
+}
+
+model EstimationVote {
+  id            String   @id @default(cuid())
+  value         Int // The vote value (1, 2, 3, 5, 8, 13, 20)
+  participantId String   @map("participant_id")
+  sessionId     String   @map("session_id")
+  storyId       String   @map("story_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  participant EstimationParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  session     EstimationSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  story       UserStory             @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, sessionId, storyId])
+  @@map("estimation_votes")
+}
+
+enum EstimationStatus {
+  WAITING  // Waiting for host to pick a story
+  VOTING   // Votes in progress
+  REVEALED // Votes revealed
+}
+
+enum VotingType {
+  EFFORT // Story Points / Job Size
+  VALUE  // User Business Value
+  TIME   // Time Criticality
+  RISK   // Risk Reduction
 }
 
 // =============================================================================

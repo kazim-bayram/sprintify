@@ -6,7 +6,7 @@ import { trpc } from "@/trpc/client";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, BarChart3 } from "lucide-react";
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import { CreateStoryDialog } from "../stories/create-story-dialog";
 import { StoryDetailSheet } from "../stories/story-detail-sheet";
 import { TicketCard } from "./ticket-card";
 import { SprintBar } from "../sprint/sprint-bar";
+import { CreateSessionDialog } from "../poker/create-session-dialog";
 import confetti from "canvas-confetti";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
@@ -36,6 +37,7 @@ type StoryType = ProjectWithBoard["boardColumns"][number]["stories"][number];
 export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: ProjectWithBoard; boardType?: "SPRINT_BOARD" | "GLOBAL_PRODUCT_BACKLOG" }) {
   const router = useRouter();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [pokerDialogOpen, setPokerDialogOpen] = useState(false);
   const [targetColumnId, setTargetColumnId] = useState<string | null>(null);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [activeStory, setActiveStory] = useState<StoryType | null>(null);
@@ -199,10 +201,16 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
             {project._count.stories} stor{project._count.stories !== 1 ? "ies" : "y"}
           </span>
         </div>
-        <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" />
-          New Story
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setPokerDialogOpen(true)}>
+            <BarChart3 className="mr-1 h-4 w-4" />
+            Planning Poker
+          </Button>
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" />
+            New Story
+          </Button>
+        </div>
       </div>
 
       {/* Sprint Bar (only on Sprint Board) */}
@@ -254,6 +262,13 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
       <StoryDetailSheet
         storyId={selectedStoryId}
         onClose={() => setSelectedStoryId(null)}
+      />
+
+      <CreateSessionDialog
+        open={pokerDialogOpen}
+        onOpenChange={setPokerDialogOpen}
+        projectId={project.id}
+        projectKey={project.key}
       />
     </div>
   );

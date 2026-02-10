@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban, ListTodo, Timer, Layers, Package, Shield,
+  LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban, ListTodo, Timer, Layers, Package, Shield, Grid3X3, BarChart3,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 
@@ -27,6 +27,7 @@ export function Sidebar() {
     ? [
         { name: "Sprint Board", href: `/projects/${projectSlug}/board`, icon: Kanban },
         { name: "Product Backlog", href: `/projects/${projectSlug}/product-backlog`, icon: Package },
+        { name: "Planning Grid", href: `/projects/${projectSlug}/planner`, icon: Grid3X3 },
         { name: "Backlog List", href: `/projects/${projectSlug}/backlog`, icon: ListTodo },
         { name: "Sprints", href: `/projects/${projectSlug}/sprints`, icon: Timer },
       ]
@@ -69,7 +70,7 @@ export function Sidebar() {
           <Command className="h-3 w-3" />
           <span><kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">⌘K</kbd> to search</span>
         </div>
-        <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.5.0 — Enterprise</p>
+        <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.6.0 — Collab</p>
       </div>
     </aside>
   );

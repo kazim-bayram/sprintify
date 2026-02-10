@@ -134,3 +134,25 @@ export const DEFAULT_DOD_ITEMS = [
   "Regulatory check passed",
   "Stakeholder sign-off received",
 ] as const;
+
+// =============================================================================
+// Planning Poker / Value & Effort Workshop
+// =============================================================================
+
+// Fibonacci voting cards
+export const POKER_CARDS = [1, 2, 3, 5, 8, 13, 20] as const;
+export type PokerCard = (typeof POKER_CARDS)[number];
+
+// Voting type labels
+export const VOTING_TYPES = [
+  { value: "EFFORT", label: "Story Points", description: "Effort / Job Size", field: "jobSize" },
+  { value: "VALUE", label: "Business Value", description: "User / Business Value", field: "userBusinessValue" },
+  { value: "TIME", label: "Time Criticality", description: "Time Criticality", field: "timeCriticality" },
+  { value: "RISK", label: "Risk Reduction", description: "Risk Reduction / Opportunity", field: "riskReduction" },
+] as const;
+export type VotingTypeValue = (typeof VOTING_TYPES)[number]["value"];
+
+/** Generate a 6-char alphanumeric access code */
+export function generateAccessCode(): string {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
