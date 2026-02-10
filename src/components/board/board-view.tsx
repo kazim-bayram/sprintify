@@ -33,7 +33,7 @@ type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ProjectWithBoard = RouterOutputs["project"]["getByKey"];
 type StoryType = ProjectWithBoard["boardColumns"][number]["stories"][number];
 
-export function BoardView({ project }: { project: ProjectWithBoard }) {
+export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: ProjectWithBoard; boardType?: "SPRINT_BOARD" | "GLOBAL_PRODUCT_BACKLOG" }) {
   const router = useRouter();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [targetColumnId, setTargetColumnId] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export function BoardView({ project }: { project: ProjectWithBoard }) {
     // Background sync — UI already updated optimistically
     onSuccess: () => router.refresh(),
     onError: (err) => {
-      // REVERT: If server rejects (e.g. DoD quality gate), revert to server state
+      // REVERT: If server rejects (WIP limit, DoD quality gate), revert to server state
       toast.error(err.message ?? "Failed to move story. Reverting.");
       setColumnsState(project.boardColumns);
     },
@@ -205,8 +205,8 @@ export function BoardView({ project }: { project: ProjectWithBoard }) {
         </Button>
       </div>
 
-      {/* Sprint Bar */}
-      <SprintBar projectId={project.id} projectKey={project.key} />
+      {/* Sprint Bar (only on Sprint Board) */}
+      {boardType === "SPRINT_BOARD" && <SprintBar projectId={project.id} projectKey={project.key} />}
 
       {/* Filter Bar */}
       <BoardFilterBar filters={filters} onFiltersChange={setFilters} />

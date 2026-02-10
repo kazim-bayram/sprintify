@@ -37,8 +37,10 @@ export function CreateStoryDialog({ open, onOpenChange, projectId, projectKey, c
   const [timeCriticality, setTimeCriticality] = useState("0");
   const [riskReduction, setRiskReduction] = useState("0");
   const [jobSize, setJobSize] = useState("1");
+  const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
 
   const members = trpc.member.list.useQuery();
+  const fieldDefs = trpc.admin.listFields.useQuery();
 
   const createStory = trpc.story.create.useMutation({
     onSuccess: (story) => {
@@ -54,11 +56,22 @@ export function CreateStoryDialog({ open, onOpenChange, projectId, projectKey, c
     setTitle(""); setDescription(""); setPriority("NONE"); setDepartment("none");
     setStoryPoints("none"); setAssigneeId("unassigned");
     setUserBusinessValue("0"); setTimeCriticality("0"); setRiskReduction("0"); setJobSize("1");
+    setCustomValues({});
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title) return;
+
+    // Validate required custom fields
+    const fields = fieldDefs.data ?? [];
+    for (const field of fields) {
+      if (field.isRequired && !customValues[field.fieldKey]) {
+        toast.error(`"${field.name}" is required.`);
+        return;
+      }
+    }
+
     createStory.mutate({
       projectId, title,
       description: description || undefined,
@@ -70,12 +83,19 @@ export function CreateStoryDialog({ open, onOpenChange, projectId, projectKey, c
       timeCriticality: parseInt(timeCriticality),
       riskReduction: parseInt(riskReduction),
       jobSize: parseInt(jobSize) || 1,
+      customValues: Object.keys(customValues).length > 0 ? customValues : undefined,
     });
   }
 
   useEffect(() => { if (open) setTimeout(() => titleRef.current?.focus(), 100); }, [open]);
 
   const wsjf = calculateWSJF(parseInt(userBusinessValue), parseInt(timeCriticality), parseInt(riskReduction), parseInt(jobSize) || 1);
+
+  function setCustomField(key: string, value: unknown) {
+    setCustomValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  const fields = fieldDefs.data ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -182,6 +202,24 @@ export function CreateStoryDialog({ open, onOpenChange, projectId, projectKey, c
             <p className="text-[10px] text-muted-foreground">WSJF = (Value + Criticality + Risk) / Job Size</p>
           </div>
 
+          {/* Dynamic Custom Fields from FieldDefinitions */}
+          {fields.length > 0 && (
+            <div className="rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-3">
+              <span className="text-xs font-semibold">Custom Fields</span>
+              <div className="grid grid-cols-2 gap-3">
+                {fields.map((field) => (
+                  <CustomFieldInput
+                    key={field.id}
+                    field={field}
+                    value={customValues[field.fieldKey]}
+                    onChange={(val) => setCustomField(field.fieldKey, val)}
+                    members={members.data}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => { onOpenChange(false); resetForm(); }}>Cancel</Button>
             <Button type="submit" disabled={createStory.isPending || !title}>{createStory.isPending ? "Creating..." : "Create Story"}</Button>
@@ -190,4 +228,68 @@ export function CreateStoryDialog({ open, onOpenChange, projectId, projectKey, c
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Render a single custom field input based on FieldDefinition type */
+function CustomFieldInput({
+  field, value, onChange, members,
+}: {
+  field: { id: string; name: string; fieldKey: string; type: string; options: string[]; isRequired: boolean };
+  value: unknown;
+  onChange: (val: unknown) => void;
+  members?: { user: { id: string; name: string | null; email: string } }[];
+}) {
+  const label = field.name + (field.isRequired ? " *" : "");
+
+  switch (field.type) {
+    case "TEXT":
+      return (
+        <div className="space-y-1.5">
+          <Label className="text-xs">{label}</Label>
+          <Input value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={field.name} className="h-9 text-sm" />
+        </div>
+      );
+    case "NUMBER":
+      return (
+        <div className="space-y-1.5">
+          <Label className="text-xs">{label}</Label>
+          <Input type="number" value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)} placeholder="0" className="h-9 text-sm" />
+        </div>
+      );
+    case "SELECT":
+      return (
+        <div className="space-y-1.5">
+          <Label className="text-xs">{label}</Label>
+          <Select value={(value as string) ?? "__none"} onValueChange={(v) => onChange(v === "__none" ? null : v)}>
+            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">None</SelectItem>
+              {field.options.map((opt) => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    case "DATE":
+      return (
+        <div className="space-y-1.5">
+          <Label className="text-xs">{label}</Label>
+          <Input type="date" value={(value as string) ?? ""} onChange={(e) => onChange(e.target.value || null)} className="h-9 text-sm" />
+        </div>
+      );
+    case "USER":
+      return (
+        <div className="space-y-1.5">
+          <Label className="text-xs">{label}</Label>
+          <Select value={(value as string) ?? "__none"} onValueChange={(v) => onChange(v === "__none" ? null : v)}>
+            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select user..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">None</SelectItem>
+              {members?.map((m) => <SelectItem key={m.user.id} value={m.user.id}>{m.user.name ?? m.user.email}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    default:
+      return null;
+  }
 }

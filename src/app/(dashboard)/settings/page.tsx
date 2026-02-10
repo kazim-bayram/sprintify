@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Users, Tags, Building2 } from "lucide-react";
+import { Users, Tags, Building2, Shield } from "lucide-react";
 
 export const metadata = {
-  title: "Settings — Sprintify",
+  title: "Settings — Sprintify NPD",
 };
 
 const settingsSections = [
@@ -18,6 +18,12 @@ const settingsSections = [
     description: "Manage organization-wide labels and colors.",
     href: "/settings/labels",
     icon: Tags,
+  },
+  {
+    name: "Admin Settings",
+    description: "Configure workflows, columns, WIP limits, and custom fields.",
+    href: "/admin/settings",
+    icon: Shield,
   },
   {
     name: "Organization",

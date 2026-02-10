@@ -2,13 +2,21 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const DEFAULT_BOARD_COLUMNS = [
-  { name: "Backlog", position: 0 },
-  { name: "To Do", position: 1 },
-  { name: "In Progress", position: 2 },
-  { name: "Evaluation / Lab", position: 3 },
-  { name: "Done", position: 4 },
+const SPRINT_COLUMNS = [
+  { name: "Backlog", position: 0, colType: "BACKLOG" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "To Do", position: 1, colType: "TODO" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "In Progress", position: 2, colType: "DOING" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "Evaluation / Lab", position: 3, colType: "DOING" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "Done", position: 4, colType: "DONE" as const, boardType: "SPRINT_BOARD" as const },
 ];
+
+const BACKLOG_COLUMNS = [
+  { name: "New Ideas", position: 0, colType: "BACKLOG" as const, boardType: "GLOBAL_PRODUCT_BACKLOG" as const },
+  { name: "Grooming", position: 1, colType: "TODO" as const, boardType: "GLOBAL_PRODUCT_BACKLOG" as const },
+  { name: "Ready for Sprint", position: 2, colType: "DONE" as const, boardType: "GLOBAL_PRODUCT_BACKLOG" as const },
+];
+
+const ALL_COLUMNS = [...SPRINT_COLUMNS, ...BACKLOG_COLUMNS];
 
 async function main() {
   console.log("🌱 Seeding Sprintify NPD database...");
@@ -65,15 +73,15 @@ async function main() {
   });
   console.log(`  ✓ Project: ${project.name} (${project.key})`);
 
-  // Board columns
-  for (const col of DEFAULT_BOARD_COLUMNS) {
+  // Board columns (both Sprint Board + Product Backlog)
+  for (const col of ALL_COLUMNS) {
     await prisma.boardColumn.upsert({
-      where: { projectId_position: { projectId: project.id, position: col.position } },
-      update: { name: col.name },
-      create: { name: col.name, position: col.position, projectId: project.id },
+      where: { projectId_boardType_position: { projectId: project.id, boardType: col.boardType, position: col.position } },
+      update: { name: col.name, colType: col.colType },
+      create: { name: col.name, position: col.position, colType: col.colType, boardType: col.boardType, projectId: project.id },
     });
   }
-  console.log(`  ✓ Board columns: ${DEFAULT_BOARD_COLUMNS.length} created`);
+  console.log(`  ✓ Board columns: ${ALL_COLUMNS.length} created (${SPRINT_COLUMNS.length} sprint + ${BACKLOG_COLUMNS.length} backlog)`);
 
   // Features (stages)
   const features = ["Formula Development", "Packaging Design", "Lab Testing", "Regulatory Check", "Launch Prep"];
@@ -86,9 +94,9 @@ async function main() {
   }
   console.log(`  ✓ Features: ${features.length} stages created`);
 
-  // Get columns
+  // Get sprint board columns
   const columns = await prisma.boardColumn.findMany({
-    where: { projectId: project.id },
+    where: { projectId: project.id, boardType: "SPRINT_BOARD" },
     orderBy: { position: "asc" },
   });
   const todoColumn = columns.find((c) => c.name === "To Do");

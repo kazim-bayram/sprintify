@@ -8,23 +8,18 @@ interface BoardPageProps {
 
 export async function generateMetadata({ params }: BoardPageProps) {
   const { slug } = await params;
-  return {
-    title: `${slug.toUpperCase()} Board — Sprintify NPD`,
-  };
+  return { title: `${slug.toUpperCase()} Sprint Board — Sprintify NPD` };
 }
 
 export default async function BoardPage({ params }: BoardPageProps) {
   const { slug } = await params;
-
   try {
     const caller = await api();
-    const project = await caller.project.getByKey({ key: slug.toUpperCase() });
+    const project = await caller.project.getByKey({ key: slug.toUpperCase(), boardType: "SPRINT_BOARD" });
     return (
       <div className="flex h-full flex-col">
-        <BoardView project={project} />
+        <BoardView project={project} boardType="SPRINT_BOARD" />
       </div>
     );
-  } catch {
-    notFound();
-  }
+  } catch { notFound(); }
 }

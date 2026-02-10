@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban, ListTodo, Timer, Layers,
+  LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban, ListTodo, Timer, Layers, Package, Shield,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 
@@ -13,6 +13,7 @@ const navigation = [
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Members", href: "/settings/members", icon: Users },
+  { name: "Admin", href: "/admin/settings", icon: Shield },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -24,8 +25,9 @@ export function Sidebar() {
 
   const projectSubNav = projectSlug
     ? [
-        { name: "Board", href: `/projects/${projectSlug}/board`, icon: Kanban },
-        { name: "Backlog", href: `/projects/${projectSlug}/backlog`, icon: ListTodo },
+        { name: "Sprint Board", href: `/projects/${projectSlug}/board`, icon: Kanban },
+        { name: "Product Backlog", href: `/projects/${projectSlug}/product-backlog`, icon: Package },
+        { name: "Backlog List", href: `/projects/${projectSlug}/backlog`, icon: ListTodo },
         { name: "Sprints", href: `/projects/${projectSlug}/sprints`, icon: Timer },
       ]
     : [];
@@ -67,7 +69,7 @@ export function Sidebar() {
           <Command className="h-3 w-3" />
           <span><kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">⌘K</kbd> to search</span>
         </div>
-        <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.4.0 — NPD Platform</p>
+        <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.5.0 — Enterprise</p>
       </div>
     </aside>
   );

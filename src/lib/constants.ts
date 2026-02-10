@@ -5,13 +5,45 @@
 
 export const APP_NAME = "Sprintify NPD";
 
-// Default board columns for new projects (NPD pipeline)
-export const DEFAULT_BOARD_COLUMNS = [
-  { name: "Backlog", position: 0 },
-  { name: "To Do", position: 1 },
-  { name: "In Progress", position: 2 },
-  { name: "Evaluation / Lab", position: 3 },
-  { name: "Done", position: 4 },
+// Default Sprint Board columns for new projects
+export const DEFAULT_SPRINT_COLUMNS = [
+  { name: "Backlog", position: 0, colType: "BACKLOG" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "To Do", position: 1, colType: "TODO" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "In Progress", position: 2, colType: "DOING" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "Evaluation / Lab", position: 3, colType: "DOING" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "Done", position: 4, colType: "DONE" as const, boardType: "SPRINT_BOARD" as const },
+] as const;
+
+// Default Product Backlog columns for new projects
+export const DEFAULT_BACKLOG_COLUMNS = [
+  { name: "New Ideas", position: 0, colType: "BACKLOG" as const, boardType: "GLOBAL_PRODUCT_BACKLOG" as const },
+  { name: "Grooming", position: 1, colType: "TODO" as const, boardType: "GLOBAL_PRODUCT_BACKLOG" as const },
+  { name: "Ready for Sprint", position: 2, colType: "DONE" as const, boardType: "GLOBAL_PRODUCT_BACKLOG" as const },
+] as const;
+
+// Combined for project creation
+export const DEFAULT_BOARD_COLUMNS = [...DEFAULT_SPRINT_COLUMNS, ...DEFAULT_BACKLOG_COLUMNS];
+
+// Column system types (for mapping)
+export const COLUMN_TYPES = [
+  { value: "BACKLOG", label: "Backlog", description: "Incoming / unplanned work" },
+  { value: "TODO", label: "To Do", description: "Planned but not started" },
+  { value: "DOING", label: "In Progress", description: "Active work" },
+  { value: "DONE", label: "Done", description: "Completed work" },
+] as const;
+
+export const BOARD_TYPES = [
+  { value: "SPRINT_BOARD", label: "Sprint Board" },
+  { value: "GLOBAL_PRODUCT_BACKLOG", label: "Product Backlog" },
+] as const;
+
+// Custom field types
+export const FIELD_TYPES = [
+  { value: "TEXT", label: "Text" },
+  { value: "NUMBER", label: "Number" },
+  { value: "SELECT", label: "Dropdown" },
+  { value: "DATE", label: "Date" },
+  { value: "USER", label: "User Picker" },
 ] as const;
 
 // RBAC roles

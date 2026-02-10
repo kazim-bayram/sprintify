@@ -165,6 +165,9 @@ export function StorySidebar({ story }: { story: StoryDetail }) {
         </div>
       </div>
 
+      {/* Dynamic Custom Fields */}
+      <CustomFieldsSection story={story} onUpdate={update} />
+
       {/* Reporter (read-only) */}
       <div className="space-y-1">
         <span className="text-xs text-muted-foreground">Reported by</span>
@@ -172,6 +175,78 @@ export function StorySidebar({ story }: { story: StoryDetail }) {
           <Avatar className="h-5 w-5"><AvatarImage src={story.reporter.avatarUrl ?? undefined} /><AvatarFallback className="text-[8px]">{story.reporter.name?.charAt(0) ?? story.reporter.email.charAt(0)}</AvatarFallback></Avatar>
           <span>{story.reporter.name ?? story.reporter.email}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Render custom fields from FieldDefinitions with inline editing */
+function CustomFieldsSection({ story, onUpdate }: { story: StoryDetail; onUpdate: (data: Record<string, unknown>) => void }) {
+  const fieldDefs = trpc.admin.listFields.useQuery();
+  const members = trpc.member.list.useQuery();
+  const fields = fieldDefs.data ?? [];
+
+  if (fields.length === 0) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const currentValues: Record<string, any> = (story.customValues as Record<string, unknown>) ?? {};
+
+  function handleFieldChange(key: string, value: unknown) {
+    const updated = { ...currentValues, [key]: value };
+    onUpdate({ customValues: updated });
+  }
+
+  return (
+    <div className="rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-2">
+      <span className="text-xs font-semibold">Custom Fields</span>
+      <div className="grid grid-cols-2 gap-2">
+        {fields.map((field) => (
+          <div key={field.id} className="space-y-0.5">
+            <label className="text-[10px] text-muted-foreground">{field.name}{field.isRequired ? " *" : ""}</label>
+            {field.type === "TEXT" && (
+              <input
+                className="w-full rounded border bg-background px-2 py-1 text-xs"
+                value={currentValues[field.fieldKey] ?? ""}
+                onChange={(e) => handleFieldChange(field.fieldKey, e.target.value)}
+                placeholder={field.name}
+              />
+            )}
+            {field.type === "NUMBER" && (
+              <input
+                type="number"
+                className="w-full rounded border bg-background px-2 py-1 text-xs"
+                value={currentValues[field.fieldKey] ?? ""}
+                onChange={(e) => handleFieldChange(field.fieldKey, e.target.value ? Number(e.target.value) : null)}
+              />
+            )}
+            {field.type === "SELECT" && (
+              <Select value={currentValues[field.fieldKey] ?? "__none"} onValueChange={(v) => handleFieldChange(field.fieldKey, v === "__none" ? null : v)}>
+                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none" className="text-xs">None</SelectItem>
+                  {field.options.map((opt) => <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {field.type === "DATE" && (
+              <input
+                type="date"
+                className="w-full rounded border bg-background px-2 py-1 text-xs"
+                value={currentValues[field.fieldKey] ?? ""}
+                onChange={(e) => handleFieldChange(field.fieldKey, e.target.value || null)}
+              />
+            )}
+            {field.type === "USER" && (
+              <Select value={currentValues[field.fieldKey] ?? "__none"} onValueChange={(v) => handleFieldChange(field.fieldKey, v === "__none" ? null : v)}>
+                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none" className="text-xs">None</SelectItem>
+                  {members.data?.map((m) => <SelectItem key={m.user.id} value={m.user.id} className="text-xs">{m.user.name ?? m.user.email}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

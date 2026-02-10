@@ -59,6 +59,7 @@ export const storyRouter = createTRPCRouter({
       timeCriticality: z.number().int().min(0).max(10).default(0),
       riskReduction: z.number().int().min(0).max(10).default(0),
       jobSize: z.number().int().min(1).default(1),
+      customValues: z.record(z.string(), z.unknown()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
@@ -89,6 +90,7 @@ export const storyRouter = createTRPCRouter({
           timeCriticality: input.timeCriticality,
           riskReduction: input.riskReduction,
           jobSize: input.jobSize,
+          customValues: input.customValues ? (input.customValues as Record<string, unknown>) as any : undefined,
           projectId: project.id,
           featureId: input.featureId ?? null,
           columnId: targetColumnId,
@@ -124,11 +126,12 @@ export const storyRouter = createTRPCRouter({
       timeCriticality: z.number().int().min(0).max(10).optional(),
       riskReduction: z.number().int().min(0).max(10).optional(),
       jobSize: z.number().int().min(1).optional(),
+      customValues: z.record(z.string(), z.unknown()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
 
-      const { id, columnId, assigneeId, sprintId, featureId, department, ...rest } = input;
+      const { id, columnId, assigneeId, sprintId, featureId, department, customValues, ...rest } = input;
       const story = await ctx.db.userStory.findFirst({ where: { id, organizationId: ctx.organization.id } });
       if (!story) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -136,6 +139,7 @@ export const storyRouter = createTRPCRouter({
       const updateData: any = { ...rest };
 
       if (department !== undefined) updateData.department = department;
+      if (customValues !== undefined) updateData.customValues = customValues as any;
       if (columnId !== undefined) updateData.column = columnId ? { connect: { id: columnId } } : { disconnect: true };
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
       if (sprintId !== undefined) updateData.sprint = sprintId ? { connect: { id: sprintId } } : { disconnect: true };
@@ -181,9 +185,25 @@ export const storyRouter = createTRPCRouter({
       if (!story) throw new TRPCError({ code: "NOT_FOUND" });
 
       const targetColumn = await ctx.db.boardColumn.findUnique({ where: { id: input.targetColumnId } });
+      if (!targetColumn) throw new TRPCError({ code: "NOT_FOUND", message: "Target column not found." });
 
-      // Quality Gate: Block move to Done if DoD items unchecked
-      if (targetColumn?.name.toLowerCase() === "done") {
+      // WIP Limit Guard: Block move if target column is at capacity
+      if (targetColumn.wipLimit != null) {
+        const currentCount = await ctx.db.userStory.count({
+          where: { columnId: input.targetColumnId, archivedAt: null },
+        });
+        // Don't count if re-ordering within the same column
+        const isMovingToNewColumn = story.columnId !== input.targetColumnId;
+        if (isMovingToNewColumn && currentCount >= targetColumn.wipLimit) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `WIP Limit Reached! "${targetColumn.name}" has a limit of ${targetColumn.wipLimit}. Finish existing work first.`,
+          });
+        }
+      }
+
+      // Quality Gate: Block move to Done-type column if DoD items unchecked
+      if (targetColumn.colType === "DONE") {
         const dodItems = await ctx.db.checklistItem.findMany({
           where: { storyId: input.storyId, type: "DOD" },
         });

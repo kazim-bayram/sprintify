@@ -11,10 +11,11 @@ import { programRouter } from "./routers/program";
 import { featureRouter } from "./routers/feature";
 import { taskRouter } from "./routers/task";
 import { checklistRouter } from "./routers/checklist";
+import { adminRouter } from "./routers/admin";
 
 /**
  * Root tRPC router — all sub-routers merged here.
- * Sprintify NPD: FMCG New Product Development Platform.
+ * Sprintify NPD: Fully Configurable Enterprise Platform.
  */
 export const appRouter = createTRPCRouter({
   project: projectRouter,
@@ -29,6 +30,7 @@ export const appRouter = createTRPCRouter({
   feature: featureRouter,
   task: taskRouter,
   checklist: checklistRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

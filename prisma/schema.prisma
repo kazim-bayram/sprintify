@@ -49,10 +49,11 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships Membership[]
-  programs    Program[]
-  projects    Project[]
-  labels      Label[]
+  memberships      Membership[]
+  programs         Program[]
+  projects         Project[]
+  labels           Label[]
+  fieldDefinitions FieldDefinition[]
 
   @@map("organizations")
 }
@@ -179,21 +180,67 @@ model Feature {
 }
 
 // =============================================================================
-// Board Columns (NPD Pipeline)
+// Dynamic Field Definitions (The "Meta-Schema")
+// Org-scoped: each company defines its own custom fields for stories.
+// =============================================================================
+
+model FieldDefinition {
+  id             String    @id @default(cuid())
+  name           String // e.g., "Regulatory Code", "Risk Value"
+  fieldKey       String    @map("field_key") // machine-safe key, e.g., "regulatory_code"
+  type           FieldType
+  options        String[]  @default([]) // dropdown choices for SELECT type
+  isRequired     Boolean   @default(false) @map("is_required")
+  position       Int       @default(0)
+  organizationId String    @map("organization_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, fieldKey])
+  @@map("field_definitions")
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  SELECT
+  DATE
+  USER
+}
+
+// =============================================================================
+// Board Columns (Fully Configurable NPD Pipeline)
 // =============================================================================
 
 model BoardColumn {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   name      String
   position  Int
-  projectId String   @map("project_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  wipLimit  Int?        @map("wip_limit") // null = unlimited
+  colType   ColumnType  @default(TODO) @map("col_type")
+  boardType BoardType   @default(SPRINT_BOARD) @map("board_type")
+  projectId String      @map("project_id")
+  createdAt DateTime    @default(now()) @map("created_at")
 
   project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stories UserStory[]
 
-  @@unique([projectId, position])
+  @@unique([projectId, boardType, position])
   @@map("board_columns")
+}
+
+enum ColumnType {
+  BACKLOG
+  TODO
+  DOING
+  DONE
+}
+
+enum BoardType {
+  GLOBAL_PRODUCT_BACKLOG
+  SPRINT_BOARD
 }
 
 // =============================================================================
@@ -266,6 +313,7 @@ model UserStory {
 
   storyPoints    Int?        @map("story_points")
   metadata       Json?       @db.JsonB
+  customValues   Json?       @db.JsonB @map("custom_values") // Dynamic field data from FieldDefinitions
 
   // Relations
   projectId      String      @map("project_id")
