@@ -8,7 +8,7 @@ interface BacklogPageProps {
 
 export async function generateMetadata({ params }: BacklogPageProps) {
   const { slug } = await params;
-  return { title: `${slug.toUpperCase()} Backlog — Sprintify NPD` };
+  return { title: `${slug.toUpperCase()} Backlog — Sprintify` };
 }
 
 export default async function BacklogPage({ params }: BacklogPageProps) {

@@ -16,9 +16,38 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sprintify — Agile Project Management",
+  title: "Sprintify | The Hybrid Project Management Platform (Agile + Waterfall)",
   description:
-    "Open-source, keyboard-first, gamified Agile project management. Faster than a spreadsheet, more fun than Jira.",
+    "Stop choosing between speed and control. Manage complex projects with integrated Gantt Charts, Scrum Boards, and WSJF Prioritization. Perfect for R&D, Engineering, and Marketing.",
+  keywords: [
+    "Hybrid Project Management",
+    "Agile vs Waterfall",
+    "Scrum Board",
+    "Gantt Chart Online",
+    "Stage-Gate Software",
+    "WSJF Tool",
+    "Project Planning",
+    "Agile Waterfall Integration",
+    "WSJF Prioritization",
+    "Planning Poker",
+    "WIP Limits",
+    "Sprint Planning",
+  ],
+  openGraph: {
+    title: "Sprintify | Agile + Waterfall in One Platform",
+    description:
+      "Seamlessly switch between Scrum Boards and Gantt Charts. WSJF Prioritization, Planning Poker, WIP Limits, and more.",
+    siteName: "Sprintify",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sprintify | The Hybrid Project Management Platform",
+    description:
+      "Agile speed. Waterfall control. Manage complex projects with integrated Gantt Charts, Scrum Boards, and WSJF Prioritization.",
+  },
+  metadataBase: new URL("https://sprintify.org"),
 };
 
 export default function RootLayout({

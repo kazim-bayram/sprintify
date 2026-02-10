@@ -8,7 +8,7 @@ interface SprintHistoryPageProps {
 
 export async function generateMetadata({ params }: SprintHistoryPageProps) {
   const { slug } = await params;
-  return { title: `${slug.toUpperCase()} Sprints — Sprintify NPD` };
+  return { title: `${slug.toUpperCase()} Sprints — Sprintify` };
 }
 
 export default async function SprintHistoryPage({ params }: SprintHistoryPageProps) {

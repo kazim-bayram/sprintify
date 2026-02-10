@@ -1,7 +1,7 @@
 import { AdminSettingsView } from "@/components/admin/admin-settings-view";
 
 export const metadata = {
-  title: "Admin Settings — Sprintify NPD",
+  title: "Admin Settings — Sprintify",
 };
 
 export default function AdminSettingsPage() {

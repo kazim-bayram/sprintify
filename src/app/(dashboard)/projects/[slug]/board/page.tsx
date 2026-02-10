@@ -8,7 +8,7 @@ interface BoardPageProps {
 
 export async function generateMetadata({ params }: BoardPageProps) {
   const { slug } = await params;
-  return { title: `${slug.toUpperCase()} Sprint Board — Sprintify NPD` };
+  return { title: `${slug.toUpperCase()} Sprint Board — Sprintify` };
 }
 
 export default async function BoardPage({ params }: BoardPageProps) {

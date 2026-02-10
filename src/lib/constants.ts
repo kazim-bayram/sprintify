@@ -1,9 +1,9 @@
 // =============================================================================
-// Sprintify NPD — Application Constants
-// FMCG New Product Development Agile Platform
+// Sprintify — Application Constants
+// Hybrid Project Management Platform (Agile + Waterfall)
 // =============================================================================
 
-export const APP_NAME = "Sprintify NPD";
+export const APP_NAME = "Sprintify";
 
 // Default Sprint Board columns for new projects
 export const DEFAULT_SPRINT_COLUMNS = [

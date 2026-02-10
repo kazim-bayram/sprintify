@@ -6,7 +6,7 @@ interface PokerPageProps {
 
 export async function generateMetadata({ params }: PokerPageProps) {
   const { code } = await params;
-  return { title: `Planning Poker ${code} — Sprintify NPD` };
+  return { title: `Planning Poker ${code} — Sprintify` };
 }
 
 export default async function PokerPage({ params }: PokerPageProps) {

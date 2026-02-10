@@ -16,6 +16,52 @@ export const projectRouter = createTRPCRouter({
     });
   }),
 
+  /** Lightweight: get methodology + basic info for a project by key (used by sidebar) */
+  getMethodology: orgProcedure
+    .input(z.object({ key: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const project = await ctx.db.project.findUnique({
+        where: { organizationId_key: { organizationId: ctx.organization.id, key: input.key.toUpperCase() } },
+        select: { id: true, key: true, name: true, methodology: true },
+      });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+      return project;
+    }),
+
+  /** Update methodology for an existing project */
+  updateMethodology: orgProcedure
+    .input(z.object({
+      key: z.string(),
+      methodology: z.enum(["AGILE", "WATERFALL", "HYBRID"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
+      const project = await ctx.db.project.findUnique({
+        where: { organizationId_key: { organizationId: ctx.organization.id, key: input.key.toUpperCase() } },
+      });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const updated = await ctx.db.project.update({
+        where: { id: project.id },
+        data: { methodology: input.methodology },
+      });
+
+      // If switching to WATERFALL or HYBRID, ensure default phases exist
+      if ((input.methodology === "WATERFALL" || input.methodology === "HYBRID") && project.methodology === "AGILE") {
+        const existingPhases = await ctx.db.phase.count({ where: { projectId: project.id } });
+        if (existingPhases === 0) {
+          const { DEFAULT_WATERFALL_PHASES: phases } = await import("@/lib/constants");
+          await ctx.db.phase.createMany({
+            data: phases.map((p) => ({
+              name: p.name, color: p.color, position: p.position, projectId: project.id,
+            })),
+          });
+        }
+      }
+
+      return updated;
+    }),
+
   /** Get a single project by key — board columns filtered by boardType */
   getByKey: orgProcedure
     .input(z.object({ key: z.string(), boardType: z.enum(["SPRINT_BOARD", "GLOBAL_PRODUCT_BACKLOG"]).default("SPRINT_BOARD") }))

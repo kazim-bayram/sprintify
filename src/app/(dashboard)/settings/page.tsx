@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Users, Tags, Building2, Shield } from "lucide-react";
 
 export const metadata = {
-  title: "Settings — Sprintify NPD",
+  title: "Settings — Sprintify",
 };
 
 const settingsSections = [

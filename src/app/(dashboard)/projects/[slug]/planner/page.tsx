@@ -8,7 +8,7 @@ interface PlannerPageProps {
 
 export async function generateMetadata({ params }: PlannerPageProps) {
   const { slug } = await params;
-  return { title: `${slug.toUpperCase()} Planning Grid — Sprintify NPD` };
+  return { title: `${slug.toUpperCase()} Planning Grid — Sprintify` };
 }
 
 export default async function PlannerPage({ params }: PlannerPageProps) {
