@@ -9,7 +9,7 @@ interface BoardPageProps {
 export async function generateMetadata({ params }: BoardPageProps) {
   const { slug } = await params;
   return {
-    title: `${slug.toUpperCase()} Board — Sprintify`,
+    title: `${slug.toUpperCase()} Board — Sprintify NPD`,
   };
 }
 

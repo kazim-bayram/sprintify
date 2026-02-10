@@ -2,7 +2,7 @@ import { api } from "@/trpc/server";
 import { ProjectList } from "@/components/projects/project-list";
 
 export const metadata = {
-  title: "Projects — Sprintify",
+  title: "Projects — Sprintify NPD",
 };
 
 export default async function ProjectsPage() {

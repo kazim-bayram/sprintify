@@ -5,39 +5,56 @@ import type { inferRouterOutputs } from "@trpc/server";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { PRIORITIES } from "@/lib/constants";
+import { PRIORITIES, DEPARTMENTS, calculateWSJF } from "@/lib/constants";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
-type Ticket =
-  RouterOutputs["project"]["getByKey"]["boardColumns"][number]["tickets"][number];
+type Story =
+  RouterOutputs["project"]["getByKey"]["boardColumns"][number]["stories"][number];
 
 interface TicketCardProps {
-  ticket: Ticket;
+  ticket: Story;
   projectKey: string;
   onClick?: () => void;
 }
 
-export function TicketCard({ ticket, projectKey, onClick }: TicketCardProps) {
-  const priority = PRIORITIES.find(
-    (p) => p.value === ((ticket as Record<string, unknown>).priority ?? "NONE")
+export function TicketCard({ ticket: story, projectKey, onClick }: TicketCardProps) {
+  const priority = PRIORITIES.find((p) => p.value === (story.priority ?? "NONE"));
+  const dept = DEPARTMENTS.find((d) => d.value === story.department);
+  const wsjf = calculateWSJF(
+    story.userBusinessValue,
+    story.timeCriticality,
+    story.riskReduction,
+    story.jobSize
   );
 
-  const assigneeInitials = ticket.assignee?.name
-    ? ticket.assignee.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : ticket.assignee?.email?.charAt(0).toUpperCase() ?? null;
+  // DoD progress
+  const dodItems = story.checklists ?? [];
+  const dodChecked = dodItems.filter((c) => c.checked).length;
+  const dodTotal = dodItems.length;
+  const dodComplete = dodTotal > 0 && dodChecked === dodTotal;
+
+  const assigneeInitials = story.assignee?.name
+    ? story.assignee.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : story.assignee?.email?.charAt(0).toUpperCase() ?? null;
 
   return (
-    <Card
-      className="cursor-pointer p-3 transition-shadow hover:shadow-md"
-      onClick={onClick}
-    >
-      {/* Priority + Story Points */}
-      <div className="mb-2 flex items-center justify-between">
+    <Card className="cursor-pointer p-3 transition-shadow hover:shadow-md" onClick={onClick}>
+      {/* Top row: Department + WSJF + Priority */}
+      <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+        {dept && (
+          <Badge
+            style={{ backgroundColor: dept.color, color: "white" }}
+            className="px-1.5 py-0 text-[10px] font-medium"
+          >
+            {dept.shortLabel}
+          </Badge>
+        )}
+        {wsjf > 0 && (
+          <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-bold border-primary text-primary">
+            WSJF {wsjf}
+          </Badge>
+        )}
         {priority && priority.value !== "NONE" && (
           <Badge
             variant={priority.color === "destructive" ? "destructive" : "secondary"}
@@ -46,28 +63,42 @@ export function TicketCard({ ticket, projectKey, onClick }: TicketCardProps) {
             {priority.label}
           </Badge>
         )}
-        {ticket.storyPoints != null && (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
-            {ticket.storyPoints}
+        {/* Story Points */}
+        {story.storyPoints != null && (
+          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+            {story.storyPoints}
           </span>
         )}
       </div>
 
       {/* Title */}
-      <p className="text-sm font-medium leading-snug">{ticket.title}</p>
+      <p className="text-sm font-medium leading-snug">{story.title}</p>
 
-      {/* Footer: Ticket ID + Assignee */}
+      {/* Feature tag */}
+      {story.feature && (
+        <p className="mt-1 text-[10px] text-muted-foreground italic">{story.feature.name}</p>
+      )}
+
+      {/* Footer: ID + DoD + Tasks + Assignee */}
       <div className="mt-3 flex items-center justify-between">
-        <span className="font-mono text-xs text-muted-foreground">
-          {projectKey}-{ticket.number}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted-foreground">
+            {projectKey}-{story.number}
+          </span>
+          {dodTotal > 0 && (
+            <span className={`flex items-center gap-0.5 text-[10px] ${dodComplete ? "text-green-600" : "text-muted-foreground"}`}>
+              {dodComplete ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+              {dodChecked}/{dodTotal}
+            </span>
+          )}
+          {story._count.tasks > 0 && (
+            <span className="text-[10px] text-muted-foreground">{story._count.tasks} tasks</span>
+          )}
+        </div>
 
-        {ticket.assignee && (
+        {story.assignee && (
           <Avatar className="h-5 w-5">
-            <AvatarImage
-              src={ticket.assignee.avatarUrl ?? undefined}
-              alt={ticket.assignee.name ?? ""}
-            />
+            <AvatarImage src={story.assignee.avatarUrl ?? undefined} alt={story.assignee.name ?? ""} />
             <AvatarFallback className="text-[8px]">{assigneeInitials}</AvatarFallback>
           </Avatar>
         )}

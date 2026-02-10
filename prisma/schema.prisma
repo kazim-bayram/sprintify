@@ -1,5 +1,8 @@
 // =============================================================================
-// Sprintify - Database Schema
+// Sprintify NPD — FMCG New Product Development Agile Platform
+// =============================================================================
+// Hybrid Agile: Stage-Gate + Scrum for R&D, Marketing, Packaging, Quality teams.
+// Hierarchy: Organization > Program > Project > Feature (Stage) > UserStory > Task
 // =============================================================================
 
 generator client {
@@ -15,17 +18,19 @@ datasource db {
 // =============================================================================
 
 model User {
-  id         String   @id @default(cuid())
-  supabaseId String   @unique @map("supabase_id")
-  email      String   @unique
+  id         String      @id @default(cuid())
+  supabaseId String      @unique @map("supabase_id")
+  email      String      @unique
   name       String?
-  avatarUrl  String?  @map("avatar_url")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  avatarUrl  String?     @map("avatar_url")
+  department Department?
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
 
   memberships     Membership[]
-  assignedTickets Ticket[]     @relation("TicketAssignee")
-  reportedTickets Ticket[]     @relation("TicketReporter")
+  assignedStories UserStory[]   @relation("StoryAssignee")
+  reportedStories UserStory[]   @relation("StoryReporter")
+  assignedTasks   Task[]        @relation("TaskAssignee")
   comments        Comment[]
   activities      Activity[]
   attachments     Attachment[]
@@ -45,6 +50,7 @@ model Organization {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   memberships Membership[]
+  programs    Program[]
   projects    Project[]
   labels      Label[]
 
@@ -71,8 +77,17 @@ enum Role {
   VIEWER
 }
 
+enum Department {
+  MARKETING
+  R_AND_D
+  PACKAGING
+  QUALITY
+  SUPPLY_CHAIN
+  FINANCE
+}
+
 // =============================================================================
-// Labels (Org-scoped, shared across projects)
+// Labels (Org-scoped, shared across programs)
 // =============================================================================
 
 model Label {
@@ -82,46 +97,90 @@ model Label {
   organizationId String   @map("organization_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  tickets      TicketLabel[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stories      StoryLabel[]
 
   @@unique([organizationId, name])
   @@map("labels")
 }
 
-model TicketLabel {
-  ticketId String @map("ticket_id")
-  labelId  String @map("label_id")
+model StoryLabel {
+  storyId String @map("story_id")
+  labelId String @map("label_id")
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  label  Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  story UserStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  label Label     @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
-  @@id([ticketId, labelId])
-  @@map("ticket_labels")
+  @@id([storyId, labelId])
+  @@map("story_labels")
 }
 
 // =============================================================================
-// Projects & Boards
+// Program (Top Level — e.g., "Biscuits Category", "Dairy Innovation")
+// =============================================================================
+
+model Program {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?  @db.Text
+  organizationId String   @map("organization_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projects     Project[]
+
+  @@map("programs")
+}
+
+// =============================================================================
+// Project (Epic — e.g., "New Protein Bar Launch")
 // =============================================================================
 
 model Project {
   id             String   @id @default(cuid())
   name           String
-  key            String
+  key            String // e.g., "PROTBAR" for story IDs like PROTBAR-42
   description    String?  @db.Text
+  programId      String?  @map("program_id")
   organizationId String   @map("organization_id")
-  ticketCounter  Int      @default(0) @map("ticket_counter")
+  storyCounter   Int      @default(0) @map("story_counter")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  tickets      Ticket[]
+  program      Program?      @relation(fields: [programId], references: [id], onDelete: SetNull)
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  features     Feature[]
+  stories      UserStory[]
   boardColumns BoardColumn[]
   sprints      Sprint[]
 
   @@unique([organizationId, key])
   @@map("projects")
 }
+
+// =============================================================================
+// Feature (Stage — e.g., "Prototyping", "Packaging Design", "Lab Tests")
+// =============================================================================
+
+model Feature {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  position    Int      @default(0)
+  projectId   String   @map("project_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stories UserStory[]
+
+  @@map("features")
+}
+
+// =============================================================================
+// Board Columns (NPD Pipeline)
+// =============================================================================
 
 model BoardColumn {
   id        String   @id @default(cuid())
@@ -130,15 +189,15 @@ model BoardColumn {
   projectId String   @map("project_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tickets Ticket[]
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stories UserStory[]
 
   @@unique([projectId, position])
   @@map("board_columns")
 }
 
 // =============================================================================
-// Sprints
+// Sprints (Iterations within a Project)
 // =============================================================================
 
 model Sprint {
@@ -154,7 +213,7 @@ model Sprint {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tickets   Ticket[]
+  stories   UserStory[]
   snapshots SprintSnapshot[]
 
   @@index([projectId, status])
@@ -173,6 +232,8 @@ model SprintSnapshot {
   date            DateTime @db.Date
   totalPoints     Int      @default(0) @map("total_points")
   completedPoints Int      @default(0) @map("completed_points")
+  totalValue      Int      @default(0) @map("total_value")
+  completedValue  Int      @default(0) @map("completed_value")
   sprintId        String   @map("sprint_id")
   createdAt       DateTime @default(now()) @map("created_at")
 
@@ -183,38 +244,53 @@ model SprintSnapshot {
 }
 
 // =============================================================================
-// Tickets
+// User Story (Backlog Item — the core work unit)
+// e.g., "As R&D, I need to approve the 2nd nozzle trial..."
 // =============================================================================
 
-model Ticket {
-  id             String    @id @default(cuid())
+model UserStory {
+  id             String      @id @default(cuid())
   number         Int
   title          String
-  description    String?   @db.Text
-  status         String    @default("TODO")
-  priority       String    @default("NONE")
-  position       Int       @default(0)
-  storyPoints    Int?      @map("story_points")
-  metadata       Json?     @db.JsonB
-  projectId      String    @map("project_id")
-  columnId       String?   @map("column_id")
-  sprintId       String?   @map("sprint_id")
-  assigneeId     String?   @map("assignee_id")
-  reporterId     String    @map("reporter_id")
-  organizationId String    @map("organization_id")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  archivedAt     DateTime? @map("archived_at")
+  description    String?     @db.Text
+  status         String      @default("BACKLOG")
+  priority       String      @default("NONE")
+  department     Department?
+  position       Int         @default(0)
 
-  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  column   BoardColumn? @relation(fields: [columnId], references: [id], onDelete: SetNull)
-  sprint   Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  assignee User?        @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  reporter User         @relation("TicketReporter", fields: [reporterId], references: [id])
+  // WSJF Scoring (Weighted Shortest Job First)
+  userBusinessValue Int       @default(0) @map("user_business_value") // 1-10
+  timeCriticality   Int       @default(0) @map("time_criticality")    // 1-10
+  riskReduction     Int       @default(0) @map("risk_reduction")      // 1-10
+  jobSize           Int       @default(1) @map("job_size")            // Story Points (>0)
 
+  storyPoints    Int?        @map("story_points")
+  metadata       Json?       @db.JsonB
+
+  // Relations
+  projectId      String      @map("project_id")
+  featureId      String?     @map("feature_id")
+  columnId       String?     @map("column_id")
+  sprintId       String?     @map("sprint_id")
+  assigneeId     String?     @map("assignee_id")
+  reporterId     String      @map("reporter_id")
+  organizationId String      @map("organization_id")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  archivedAt     DateTime?   @map("archived_at")
+
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  feature    Feature?     @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  column     BoardColumn? @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  sprint     Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  assignee   User?        @relation("StoryAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter   User         @relation("StoryReporter", fields: [reporterId], references: [id])
+
+  tasks       Task[]
+  checklists  ChecklistItem[]
   comments    Comment[]
   activities  Activity[]
-  labels      TicketLabel[]
+  labels      StoryLabel[]
   attachments Attachment[]
 
   @@unique([projectId, number])
@@ -222,7 +298,53 @@ model Ticket {
   @@index([projectId, columnId])
   @@index([assigneeId])
   @@index([sprintId])
-  @@map("tickets")
+  @@index([featureId])
+  @@map("user_stories")
+}
+
+// =============================================================================
+// Task (Granular action within a User Story)
+// e.g., "Order raw materials", "Schedule lab slot"
+// =============================================================================
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  completed   Boolean   @default(false)
+  position    Int       @default(0)
+  storyId     String    @map("story_id")
+  assigneeId  String?   @map("assignee_id")
+  dueDate     DateTime? @map("due_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  story    UserStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  assignee User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@map("tasks")
+}
+
+// =============================================================================
+// Quality Gates: DoR (Definition of Ready) & DoD (Definition of Done)
+// =============================================================================
+
+model ChecklistItem {
+  id        String        @id @default(cuid())
+  title     String
+  checked   Boolean       @default(false)
+  type      ChecklistType
+  position  Int           @default(0)
+  storyId   String        @map("story_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  story UserStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@map("checklist_items")
+}
+
+enum ChecklistType {
+  DOR // Definition of Ready — must be met before entering Sprint
+  DOD // Definition of Done — must be met before closing / moving to Done
 }
 
 // =============================================================================
@@ -232,13 +354,13 @@ model Ticket {
 model Comment {
   id        String   @id @default(cuid())
   body      String   @db.Text
-  ticketId  String   @map("ticket_id")
+  storyId   String   @map("story_id")
   userId    String   @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story UserStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("comments")
 }
@@ -247,19 +369,19 @@ model Activity {
   id        String   @id @default(cuid())
   type      String
   data      Json?    @db.JsonB
-  ticketId  String   @map("ticket_id")
+  storyId   String   @map("story_id")
   userId    String   @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story UserStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([ticketId])
+  @@index([storyId])
   @@map("activities")
 }
 
 // =============================================================================
-// File Attachments
+// File Attachments (Lab results, PDFs, photos)
 // =============================================================================
 
 model Attachment {
@@ -268,12 +390,12 @@ model Attachment {
   url       String
   size      Int
   mimeType  String   @map("mime_type")
-  ticketId  String   @map("ticket_id")
+  storyId   String   @map("story_id")
   userId    String   @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story UserStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("attachments")
 }

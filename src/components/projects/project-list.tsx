@@ -17,38 +17,24 @@ type ProjectListItem = RouterOutputs["project"]["list"][number];
 export function ProjectList({ initialProjects }: { initialProjects: ProjectListItem[] }) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: projects } = trpc.project.list.useQuery(undefined, {
-    initialData: initialProjects,
-  });
+  const { data: projects } = trpc.project.list.useQuery(undefined, { initialData: initialProjects });
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your team&apos;s projects and boards.
-          </p>
+          <p className="text-sm text-muted-foreground">Manage your NPD projects and development boards.</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
+        <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />New Project</Button>
       </div>
 
-      {/* Project Grid */}
       {projects.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16">
           <FolderKanban className="mb-4 h-12 w-12 text-muted-foreground/50" />
           <h3 className="mb-1 text-lg font-medium">No projects yet</h3>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Create your first project to get started.
-          </p>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Project
-          </Button>
+          <p className="mb-4 text-sm text-muted-foreground">Create your first NPD project to get started.</p>
+          <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Create Project</Button>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -57,26 +43,22 @@ export function ProjectList({ initialProjects }: { initialProjects: ProjectListI
               <Card className="transition-colors hover:border-primary/50 hover:shadow-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {project.key}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="font-mono text-xs">{project.key}</Badge>
+                      {project.program && <Badge variant="secondary" className="text-[10px]">{project.program.name}</Badge>}
+                    </div>
                     <span className="text-xs text-muted-foreground">
-                      {project._count.tickets} ticket{project._count.tickets !== 1 ? "s" : ""}
+                      {project._count.stories} stor{project._count.stories !== 1 ? "ies" : "y"}
                     </span>
                   </div>
                   <CardTitle className="text-lg">{project.name}</CardTitle>
-                  {project.description && (
-                    <CardDescription className="line-clamp-2">
-                      {project.description}
-                    </CardDescription>
-                  )}
+                  {project.description && <CardDescription className="line-clamp-2">{project.description}</CardDescription>}
                 </CardHeader>
               </Card>
             </Link>
           ))}
         </div>
       )}
-
       <CreateProjectDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   );
