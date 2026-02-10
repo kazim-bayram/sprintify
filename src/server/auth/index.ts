@@ -25,6 +25,37 @@ export const getCurrentUser = cache(async () => {
     },
   });
 
+  // If the database was reset, the Supabase session cookie can still be valid
+  // but our `users` table may not have a row yet. Auto-provision it to avoid
+  // redirect loops (e.g. /projects -> /sign-in -> /projects ...).
+  if (!user) {
+    const email =
+      supabaseUser.email ?? `${supabaseUser.id}@user.local`; // fallback for providers without email
+
+    return await db.user.create({
+      data: {
+        supabaseId: supabaseUser.id,
+        email,
+        name:
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabaseUser.user_metadata as any)?.full_name ??
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabaseUser.user_metadata as any)?.name ??
+          email.split("@")[0] ??
+          "User",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        avatarUrl: (supabaseUser.user_metadata as any)?.avatar_url ?? null,
+      },
+      include: {
+        memberships: {
+          include: {
+            organization: true,
+          },
+        },
+      },
+    });
+  }
+
   return user;
 });
 
