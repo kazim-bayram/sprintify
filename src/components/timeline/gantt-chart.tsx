@@ -31,6 +31,7 @@ interface PhaseData {
   progress: number;
   _count: { stories: number; sprints: number };
   dependsOn: { predecessor: { id: string; name: string } }[];
+  dependedOnBy: { successor: { id: string; name: string } }[];
 }
 
 interface SprintData {
@@ -97,6 +98,104 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
   const [createOpen, setCreateOpen] = useState(false);
   const [detailPhase, setDetailPhase] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
+
+  // Critical path: set of phase IDs that have zero float
+  const criticalPhaseIds = useMemo(() => {
+    if (methodology === "AGILE") return new Set<string>();
+
+    // Build nodes with dates
+    const nodes = new Map<
+      string,
+      {
+        id: string;
+        duration: number;
+        predecessors: string[];
+        successors: string[];
+      }
+    >();
+
+    for (const p of phases) {
+      const start = parseDate(p.startDate);
+      const end = parseDate(p.endDate);
+      if (!start || !end || end <= start) continue;
+      const duration = Math.max(daysBetween(start, end), 1);
+      nodes.set(p.id, {
+        id: p.id,
+        duration,
+        predecessors: p.dependsOn.map((d) => d.predecessor.id),
+        successors: p.dependedOnBy.map((d) => d.successor.id),
+      });
+    }
+
+    if (nodes.size === 0) return new Set<string>();
+
+    // Topological order (Kahn)
+    const inDegree = new Map<string, number>();
+    nodes.forEach((n) => {
+      inDegree.set(n.id, n.predecessors.filter((pid) => nodes.has(pid)).length);
+    });
+    const queue: string[] = [];
+    inDegree.forEach((deg, id) => {
+      if (deg === 0) queue.push(id);
+    });
+
+    const topo: string[] = [];
+    while (queue.length) {
+      const id = queue.shift()!;
+      topo.push(id);
+      const node = nodes.get(id)!;
+      for (const succId of node.successors) {
+        if (!nodes.has(succId)) continue;
+        const prev = inDegree.get(succId)!;
+        const next = prev - 1;
+        inDegree.set(succId, next);
+        if (next === 0) queue.push(succId);
+      }
+    }
+
+    if (topo.length === 0) return new Set<string>();
+
+    // Forward pass: earliest start/finish
+    const ES = new Map<string, number>();
+    const EF = new Map<string, number>();
+    for (const id of topo) {
+      const node = nodes.get(id)!;
+      const es =
+        node.predecessors
+          .filter((pid) => nodes.has(pid))
+          .reduce((max, pid) => Math.max(max, EF.get(pid) ?? 0), 0) ?? 0;
+      const ef = es + node.duration;
+      ES.set(id, es);
+      EF.set(id, ef);
+    }
+
+    const projectDuration = Math.max(...Array.from(EF.values()));
+
+    // Backward pass: latest start/finish
+    const LS = new Map<string, number>();
+    const LF = new Map<string, number>();
+    const reverseTopo = [...topo].reverse();
+
+    for (const id of reverseTopo) {
+      const node = nodes.get(id)!;
+      const lfCandidates = node.successors
+        .filter((sid) => nodes.has(sid))
+        .map((sid) => LS.get(sid)!);
+      const lf =
+        lfCandidates.length > 0 ? Math.min(...lfCandidates) : projectDuration;
+      const ls = lf - node.duration;
+      LF.set(id, lf);
+      LS.set(id, ls);
+    }
+
+    const critical = new Set<string>();
+    nodes.forEach((node) => {
+      const float = (LS.get(node.id) ?? 0) - (ES.get(node.id) ?? 0);
+      if (float === 0) critical.add(node.id);
+    });
+
+    return critical;
+  }, [phases, methodology]);
 
   const createPhaseMut = trpc.phase.create.useMutation({
     onSuccess: () => { utils.phase.list.invalidate(); setCreateOpen(false); toast.success("Phase created"); },
@@ -241,16 +340,36 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
       }
 
       if (newStart < newEnd) {
-        updatePhaseMut.mutate({
+        const payload = {
           id: dragging.id,
           startDate: toISODate(newStart),
           endDate: toISODate(newEnd),
-        });
+        };
+
+        // Update dragged phase
+        updatePhaseMut.mutate(payload);
+
+        // Propagate to direct successors: ensure successor start is not before newEnd
+        const phase = phases.find((p) => p.id === dragging.id);
+        if (phase && methodology !== "AGILE") {
+          const predEnd = newEnd;
+          for (const dep of phase.dependedOnBy ?? []) {
+            const succ = phases.find((p) => p.id === dep.successor.id);
+            const succStart = parseDate(succ?.startDate ?? null);
+            if (succ && succStart && succStart < predEnd) {
+              const bumpedStart = addDays(predEnd, 1);
+              updatePhaseMut.mutate({
+                id: succ.id,
+                startDate: toISODate(bumpedStart),
+              });
+            }
+          }
+        }
       }
     }
 
     setDragging(null);
-  }, [dragging, updatePhaseMut]);
+  }, [dragging, phases, methodology, updatePhaseMut]);
 
   // ---- Month headers ----
   const monthHeaders = useMemo(() => {
@@ -471,6 +590,8 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
                 const w = Math.max(daysBetween(barStart, barEnd) * DAY_WIDTH, MIN_BAR_WIDTH);
                 const y = HEADER_HEIGHT + i * ROW_HEIGHT + BAR_Y_OFFSET;
 
+                const isCritical = row.type === "phase" && criticalPhaseIds.has(row.id);
+
                 return (
                   <g key={row.id}>
                     {/* Full bar */}
@@ -504,8 +625,8 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
                       height={BAR_HEIGHT}
                       rx={6}
                       fill="none"
-                      stroke={row.color}
-                      strokeWidth={1.5}
+                      stroke={isCritical ? "#EF4444" : row.color}
+                      strokeWidth={isCritical ? 2 : 1.5}
                       className={cn("cursor-grab", dragging?.id === row.id ? "cursor-grabbing" : "")}
                       onMouseDown={(e) => handleDragStart(e, row, "move")}
                     />

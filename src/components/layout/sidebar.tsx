@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban,
   ListTodo, Timer, Layers, Package, Shield, Grid3X3, BarChart3, GanttChart,
-  FileText, Map, Home, type LucideIcon,
+  FileText, Map, Home, Lightbulb, type LucideIcon,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import { trpc } from "@/trpc/client";
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 // ─── Global Navigation ──────────────────────────────────────────────────────
 
 const navigation = [
+  { name: "Ideas", href: "/ideas", icon: Lightbulb },
   { name: "Programs", href: "/programs", icon: Layers },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Planning Poker", href: "/poker", icon: BarChart3 },

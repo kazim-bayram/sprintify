@@ -147,11 +147,44 @@ export const storyRouter = createTRPCRouter({
       riskReduction: z.number().int().min(0).max(10).optional(),
       jobSize: z.number().int().min(1).optional(),
       customValues: z.record(z.string(), z.unknown()).optional(),
+      duration: z.number().min(0).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      progress: z.number().int().min(0).max(100).optional(),
+      constraintType: z.enum(["ASAP", "ALAP", "MUST_START_ON", "MUST_FINISH_ON", "START_NO_EARLIER_THAN", "FINISH_NO_EARLIER_THAN"]).optional(),
+      constraintDate: z.string().optional(),
+      isMilestone: z.boolean().optional(),
+      outlineLevel: z.number().int().min(1).optional(),
+      wbsIndex: z.string().optional(),
+      parentStoryId: z.string().nullable().optional(),
+      baselineStartDate: z.string().optional(),
+      baselineEndDate: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
 
-      const { id, columnId, assigneeId, sprintId, featureId, department, customValues, ...rest } = input;
+      const {
+        id,
+        columnId,
+        assigneeId,
+        sprintId,
+        featureId,
+        department,
+        customValues,
+        duration,
+        startDate,
+        endDate,
+        progress,
+        constraintType,
+        constraintDate,
+        isMilestone,
+        outlineLevel,
+        wbsIndex,
+        parentStoryId,
+        baselineStartDate,
+        baselineEndDate,
+        ...rest
+      } = input;
       const story = await ctx.db.userStory.findFirst({
         where: { id, organizationId: ctx.organization.id },
         include: { project: { select: { methodology: true } } },
@@ -162,6 +195,18 @@ export const storyRouter = createTRPCRouter({
       const updateData: any = { ...rest };
 
       if (department !== undefined) updateData.department = department;
+      if (duration !== undefined) updateData.duration = duration;
+      if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
+      if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
+      if (progress !== undefined) updateData.progress = progress;
+      if (constraintType !== undefined) updateData.constraintType = constraintType as any;
+      if (constraintDate !== undefined) updateData.constraintDate = constraintDate ? new Date(constraintDate) : null;
+      if (isMilestone !== undefined) updateData.isMilestone = isMilestone;
+      if (outlineLevel !== undefined) updateData.outlineLevel = outlineLevel;
+      if (wbsIndex !== undefined) updateData.wbsIndex = wbsIndex;
+      if (parentStoryId !== undefined) updateData.parentStory = parentStoryId ? { connect: { id: parentStoryId } } : { disconnect: true };
+      if (baselineStartDate !== undefined) updateData.baselineStartDate = baselineStartDate ? new Date(baselineStartDate) : null;
+      if (baselineEndDate !== undefined) updateData.baselineEndDate = baselineEndDate ? new Date(baselineEndDate) : null;
       if (customValues !== undefined) updateData.customValues = customValues as any;
       if (columnId !== undefined) updateData.column = columnId ? { connect: { id: columnId } } : { disconnect: true };
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
@@ -201,6 +246,17 @@ export const storyRouter = createTRPCRouter({
         activities.push(logActivity(ctx.db, { storyId: id, userId: ctx.user.id, type: ACTIVITY_TYPES.WSJF_UPDATED }));
       }
       await Promise.all(activities);
+
+      // Auto-trigger schedule recalculation for Waterfall/Hybrid projects when dates change
+      if (story.project.methodology !== "AGILE" && (input.startDate !== undefined || input.endDate !== undefined || input.duration !== undefined)) {
+        // Import and call recalculateSchedule in background (don't await)
+        import("@/server/waterfall/schedule-engine").then(({ recalculateSchedule }) => {
+          recalculateSchedule(story.projectId).catch(() => {
+            // Silent fail - schedule will be recalculated on next manual trigger
+          });
+        });
+      }
+
       return updated;
     }),
 
@@ -277,5 +333,45 @@ export const storyRouter = createTRPCRouter({
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
       await logActivity(ctx.db, { storyId: input.id, userId: ctx.user.id, type: ACTIVITY_TYPES.STORY_RESTORED });
       return ctx.db.userStory.update({ where: { id: input.id }, data: { archivedAt: null } });
+    }),
+
+  /** List tasks for WBS grid (Waterfall / Hybrid) */
+  listWbs: orgProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const project = await ctx.db.project.findFirst({
+        where: { id: input.projectId, organizationId: ctx.organization.id },
+        select: { id: true, methodology: true },
+      });
+      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+      if (project.methodology === "AGILE") return [];
+
+      const stories = await ctx.db.userStory.findMany({
+        where: { projectId: input.projectId, organizationId: ctx.organization.id, archivedAt: null },
+        orderBy: [{ phaseId: "asc" }, { number: "asc" }],
+        include: {
+          phase: { select: { id: true, name: true } },
+          dependsOn: { include: { predecessor: { select: { id: true, number: true, title: true } } } },
+        },
+      });
+
+      return stories.map((s) => ({
+        id: s.id,
+        number: s.number,
+        title: s.title,
+        duration: s.duration,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        phaseId: s.phaseId,
+        phaseName: s.phase?.name ?? null,
+        predecessors: s.dependsOn.map((d) => d.predecessor),
+        outlineLevel: s.outlineLevel,
+        wbsIndex: s.wbsIndex,
+        parentStoryId: s.parentStoryId,
+        isMilestone: s.isMilestone,
+        progress: s.progress,
+        baselineStartDate: s.baselineStartDate,
+        baselineEndDate: s.baselineEndDate,
+      }));
     }),
 });

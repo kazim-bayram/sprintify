@@ -34,6 +34,9 @@ model User {
   comments        Comment[]
   activities      Activity[]
   attachments     Attachment[]
+  createdIdeas    Idea[]        @relation("IdeaCreatedBy")
+  createdTemplates ProjectTemplate[] @relation("TemplateCreatedBy")
+  ownedPrograms   Program[]     @relation("ProgramOwner")
 
   // Planning Poker
   hostedSessions       EstimationSession[]     @relation("SessionHost")
@@ -59,6 +62,8 @@ model Organization {
   projects         Project[]
   labels           Label[]
   fieldDefinitions FieldDefinition[]
+  ideas            Idea[]
+  projectTemplates ProjectTemplate[]
 
   @@map("organizations")
 }
@@ -126,17 +131,40 @@ model StoryLabel {
 // =============================================================================
 
 model Program {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
-  description    String?  @db.Text
-  organizationId String   @map("organization_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  description    String?       @db.Text
+  status         ProgramStatus @default(PLANNED)
+  health         ProgramHealth @default(ON_TRACK)
+  startDate      DateTime?     @map("start_date")
+  targetDate     DateTime?     @map("target_date")
+  budget         Float         @default(0) // Program budget cap
+  spent          Float         @default(0) // Actual spend (can be calculated or manual)
+  strategicGoal  String?       @db.Text @map("strategic_goal")
+  ownerId        String?       @map("owner_id")
+  organizationId String        @map("organization_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner        User?        @relation("ProgramOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   projects     Project[]
 
+  @@index([organizationId])
   @@map("programs")
+}
+
+enum ProgramStatus {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+enum ProgramHealth {
+  ON_TRACK
+  AT_RISK
+  OFF_TRACK
 }
 
 // =============================================================================
@@ -149,6 +177,7 @@ model Project {
   key            String // e.g., "PROTBAR" for story IDs like PROTBAR-42
   description    String?       @db.Text
   methodology    Methodology   @default(AGILE)
+  color          String        @default("#3B82F6") // For roadmap visualization
   startDate      DateTime?     @map("start_date")
   endDate        DateTime?     @map("end_date") // Target launch date
   programId      String?       @map("program_id")
@@ -159,6 +188,9 @@ model Project {
 
   program            Program?            @relation(fields: [programId], references: [id], onDelete: SetNull)
   organization       Organization        @relation(fields: [organizationId], references: [id])
+  ideaId         String?       @unique @map("idea_id")
+
+  idea               Idea?               @relation("IdeaProjectLink")
   features           Feature[]
   stories            UserStory[]
   boardColumns       BoardColumn[]
@@ -168,6 +200,46 @@ model Project {
 
   @@unique([organizationId, key])
   @@map("projects")
+}
+
+// =============================================================================
+// Idea / Portfolio (Pre-Project Business Case)
+// =============================================================================
+
+model Idea {
+  id                  String          @id @default(cuid())
+  title               String
+  description         String?         @db.Text
+  businessCase        String?         @db.Text
+  expectedROI         Float?          @map("expected_roi")
+  strategicAlignment  StrategicLevel  @default(MEDIUM) @map("strategic_alignment")
+  status              IdeaStatus      @default(DRAFT)
+  swotAnalysis        Json?           @db.JsonB @map("swot_analysis")
+  organizationId      String          @map("organization_id")
+  linkedProjectId     String?         @unique @map("linked_project_id")
+  createdById         String?         @map("created_by_id")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("IdeaCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  linkedProject Project?    @relation("IdeaProjectLink", fields: [linkedProjectId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@map("ideas")
+}
+
+enum StrategicLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum IdeaStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  REJECTED
 }
 
 enum Methodology {
@@ -210,6 +282,8 @@ model Phase {
   endDate     DateTime? @map("end_date")
   progress    Int       @default(0) // 0-100 percentage
   projectId   String    @map("project_id")
+  isGate      Boolean   @default(false) @map("is_gate")
+  gateApproverIds String[] @default([]) @map("gate_approver_ids")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
@@ -364,6 +438,24 @@ model UserStory {
   department     Department?
   position       Int         @default(0)
 
+  // Waterfall / WBS scheduling
+  duration       Float       @default(0) @map("duration_days") // Planned duration in days
+  startDate      DateTime?   @map("start_date")                 // Calculated start date
+  endDate        DateTime?   @map("end_date")                   // Calculated end date
+  progress       Int         @default(0)                       // 0-100 percentage
+  constraintType ConstraintType @default(ASAP) @map("constraint_type")
+  constraintDate DateTime?   @map("constraint_date")           // Date for MSO/MFO constraints
+  isMilestone    Boolean     @default(false) @map("is_milestone")
+  
+  // WBS Hierarchy
+  outlineLevel   Int         @default(1) @map("outline_level") // 1 = top level, 2 = child, etc.
+  wbsIndex       String?     @map("wbs_index")                  // e.g., "1.2.1"
+  parentStoryId  String?     @map("parent_story_id")           // Self-reference for hierarchy
+  
+  // Baseline tracking (Planned vs Actual)
+  baselineStartDate DateTime? @map("baseline_start_date")
+  baselineEndDate   DateTime? @map("baseline_end_date")
+
   // WSJF Scoring (Weighted Shortest Job First)
   userBusinessValue Int       @default(0) @map("user_business_value") // 1-10
   timeCriticality   Int       @default(0) @map("time_criticality")    // 1-10
@@ -402,6 +494,10 @@ model UserStory {
   labels           StoryLabel[]
   attachments      Attachment[]
   estimationVotes  EstimationVote[]
+  dependsOn        StoryDependency[] @relation("StorySuccessor")
+  dependedOnBy     StoryDependency[] @relation("StoryPredecessor")
+  parentStory      UserStory?        @relation("StoryHierarchy", fields: [parentStoryId], references: [id], onDelete: SetNull)
+  childStories     UserStory[]      @relation("StoryHierarchy")
 
   @@unique([projectId, number])
   @@index([organizationId])
@@ -411,6 +507,89 @@ model UserStory {
   @@index([featureId])
   @@index([phaseId])
   @@map("user_stories")
+}
+
+// Activity-level dependencies (WBS links)
+model StoryDependency {
+  predecessorId String        @map("predecessor_id")
+  successorId   String        @map("successor_id")
+  type          DependencyType @default(FS)
+  lag           Int           @default(0) // Lag in days
+
+  predecessor UserStory @relation("StoryPredecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor   UserStory @relation("StorySuccessor", fields: [successorId], references: [id], onDelete: Cascade)
+
+  @@id([predecessorId, successorId])
+  @@map("story_dependencies")
+}
+
+enum DependencyType {
+  FS // Finish to Start
+  SS // Start to Start
+  FF // Finish to Finish
+  SF // Start to Finish
+}
+
+enum ConstraintType {
+  ASAP            // As Soon As Possible
+  ALAP            // As Late As Possible
+  MUST_START_ON
+  MUST_FINISH_ON
+  START_NO_EARLIER_THAN
+  FINISH_NO_EARLIER_THAN
+}
+
+// =============================================================================
+// Project Templates (Waterfall / Hybrid workflow blueprints)
+// =============================================================================
+
+model ProjectTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?  @db.Text
+  methodology    Methodology @default(WATERFALL)
+  organizationId String   @map("organization_id")
+  createdById    String?  @map("created_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("TemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  phases       TemplatePhase[]
+
+  @@index([organizationId])
+  @@map("project_templates")
+}
+
+model TemplatePhase {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  color       String   @default("#3B82F6")
+  position    Int      @default(0)
+  isGate      Boolean  @default(false)
+  templateId  String   @map("template_id")
+
+  template ProjectTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  tasks    TemplateTask[]
+
+  @@index([templateId])
+  @@map("template_phases")
+}
+
+model TemplateTask {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  position    Int      @default(0)
+  duration    Float    @default(0)
+  isMilestone Boolean  @default(false)
+  phaseId     String   @map("phase_id")
+
+  phase TemplatePhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([phaseId])
+  @@map("template_tasks")
 }
 
 // =============================================================================

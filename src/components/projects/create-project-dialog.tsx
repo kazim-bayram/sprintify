@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/trpc/client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Kanban, GanttChart, Layers, ArrowRight, ArrowLeft, Check } from "lucide-react";
@@ -20,6 +20,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
   const router = useRouter();
   const utils = trpc.useUtils();
   const programs = trpc.program.list.useQuery();
+  const templatesQuery = trpc.template.list.useQuery();
 
   // Wizard step: 0 = methodology, 1 = details
   const [step, setStep] = useState(0);
@@ -30,6 +31,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
   const [programId, setProgramId] = useState<string>("none");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [templateId, setTemplateId] = useState<string>("none");
 
   const createProject = trpc.project.create.useMutation({
     onSuccess: (project) => {
@@ -49,7 +51,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
 
   function resetForm() {
     setStep(0); setMethodology("AGILE"); setName(""); setKey(""); setDescription("");
-    setProgramId("none"); setStartDate(""); setEndDate("");
+    setProgramId("none"); setStartDate(""); setEndDate(""); setTemplateId("none");
   }
 
   function handleNameChange(value: string) {
@@ -61,11 +63,14 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
     e.preventDefault();
     if (!name || !key) return;
     createProject.mutate({
-      name, key, methodology,
+      name,
+      key,
+      methodology,
       description: description || undefined,
       programId: programId === "none" ? undefined : programId,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
+      templateId: templateId === "none" ? undefined : templateId,
     });
   }
 
@@ -153,6 +158,31 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Template selection — Waterfall & Hybrid only */}
+            {(methodology === "WATERFALL" || methodology === "HYBRID") && (
+              <div className="space-y-1.5">
+                <Label>Workflow Template (optional)</Label>
+                <Select value={templateId} onValueChange={setTemplateId}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="No template (use generic phases)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No template (generic Feasibility → Launch)</SelectItem>
+                    {templatesQuery.data
+                      ?.filter((tpl) => tpl.methodology === methodology)
+                      .map((tpl) => (
+                        <SelectItem key={tpl.id} value={tpl.id}>
+                          {tpl.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Templates define default phases and WBS tasks for Waterfall / Hybrid projects.
+                </p>
+              </div>
+            )}
 
             {/* Date range — shown for Waterfall & Hybrid */}
             {(methodology === "WATERFALL" || methodology === "HYBRID") && (

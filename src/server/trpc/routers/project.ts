@@ -104,7 +104,7 @@ export const projectRouter = createTRPCRouter({
       return project;
     }),
 
-  /** Create a new project with default columns and optional phases */
+  /** Create a new project with default columns and optional phases/templates */
   create: orgProcedure
     .input(z.object({
       name: z.string().min(1).max(100),
@@ -114,6 +114,7 @@ export const projectRouter = createTRPCRouter({
       methodology: z.enum(["AGILE", "WATERFALL", "HYBRID"]).default("AGILE"),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
+      templateId: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
@@ -124,6 +125,26 @@ export const projectRouter = createTRPCRouter({
       if (existing) throw new TRPCError({ code: "CONFLICT", message: `Key "${input.key}" already exists.` });
 
       return ctx.db.$transaction(async (tx) => {
+        // If a template is provided, validate it belongs to the organization and matches methodology
+        // use a loose type here to avoid over-constraining Prisma's inferred type
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let template: any | null = null;
+        if (input.templateId) {
+          template = await tx.projectTemplate.findUnique({
+            where: { id: input.templateId },
+            select: { id: true, methodology: true, organizationId: true },
+          }) as unknown as { id: string; methodology: string; organizationId: string } | null;
+          if (!template || template.organizationId !== ctx.organization.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Template not found." });
+          }
+          if (template.methodology !== input.methodology) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "Template methodology must match project methodology.",
+            });
+          }
+        }
+
         const project = await tx.project.create({
           data: {
             name: input.name, key: input.key, description: input.description,
@@ -141,13 +162,81 @@ export const projectRouter = createTRPCRouter({
           })),
         });
 
-        // For Waterfall and Hybrid, also create default phases
+        // For Waterfall and Hybrid, create phases either from template or defaults
         if (input.methodology === "WATERFALL" || input.methodology === "HYBRID") {
-          await tx.phase.createMany({
-            data: DEFAULT_WATERFALL_PHASES.map((p) => ({
-              name: p.name, color: p.color, position: p.position, projectId: project.id,
-            })),
-          });
+          if (template) {
+            const templateWithPhases = await tx.projectTemplate.findUnique({
+              where: { id: template.id },
+              include: { phases: { orderBy: { position: "asc" }, include: { tasks: { orderBy: { position: "asc" } } } } },
+            });
+
+            if (!templateWithPhases) {
+              throw new TRPCError({ code: "NOT_FOUND", message: "Template not found." });
+            }
+
+            // Create phases based on template phases
+            const createdPhases = await Promise.all(
+              templateWithPhases.phases.map((p, idx) =>
+                tx.phase.create({
+                  data: {
+                    name: p.name,
+                    description: p.description,
+                    color: p.color,
+                    position: idx,
+                    isGate: p.isGate,
+                    projectId: project.id,
+                  },
+                }),
+              ),
+            );
+
+            // Seed default stories for template tasks as WBS skeleton
+            if (templateWithPhases.phases.length > 0) {
+              let storyNumber = 1;
+              for (let i = 0; i < templateWithPhases.phases.length; i++) {
+                const tplPhase = templateWithPhases.phases[i];
+                const phase = createdPhases[i];
+
+                for (const task of tplPhase.tasks) {
+                  await tx.userStory.create({
+                    data: {
+                      number: storyNumber++,
+                      title: task.name,
+                      description: task.description,
+                      status: "BACKLOG",
+                      priority: "NONE",
+                      position: storyNumber,
+                      duration: task.duration,
+                      isMilestone: task.isMilestone,
+                      userBusinessValue: 0,
+                      timeCriticality: 0,
+                      riskReduction: 0,
+                      jobSize: 1,
+                      projectId: project.id,
+                      phaseId: phase.id,
+                      columnId: null,
+                      sprintId: null,
+                      assigneeId: null,
+                      reporterId: ctx.user.id,
+                      organizationId: ctx.organization.id,
+                    },
+                  });
+                }
+              }
+
+              // Update project story counter
+              await tx.project.update({
+                where: { id: project.id },
+                data: { storyCounter: await tx.userStory.count({ where: { projectId: project.id } }) },
+              });
+            }
+          } else {
+            await tx.phase.createMany({
+              data: DEFAULT_WATERFALL_PHASES.map((p) => ({
+                name: p.name, color: p.color, position: p.position, projectId: project.id,
+              })),
+            });
+          }
         }
 
         return project;
