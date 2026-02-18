@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const demoEmail = process.env.DEMO_USER_EMAIL;
-    const demoPassword = process.env.DEMO_USER_PASSWORD;
+    const demoEmail = "kitom98633@bitoini.com";
+    const demoPassword = "demo1234";
 
     if (!demoEmail || !demoPassword) {
       console.error("Demo sign-in failed: DEMO_USER_EMAIL or DEMO_USER_PASSWORD not configured");
