@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { APP_NAME } from "@/lib/constants";
+import { LandingFooter } from "@/components/landing/footer";
 import {
   Zap, ArrowRight, Check, GanttChart, Kanban, BarChart3, Users, ShieldCheck,
   Layers, Target, Rocket, Building2, FlaskConical, Code2, Megaphone,
@@ -408,31 +409,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* =================== FOOTER =================== */}
-      <footer className="border-t bg-muted/20 py-12">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-                <Zap className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-bold">{APP_NAME}</span>
-            </div>
-
-            <nav className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
-              <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-              <a href="#use-cases" className="hover:text-foreground transition-colors">Use Cases</a>
-              <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-              <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-              <a href="mailto:contact@sprintify.org" className="hover:text-foreground transition-colors">Contact</a>
-            </nav>
-
-            <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} {APP_NAME}. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
