@@ -98,6 +98,8 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
   const [createOpen, setCreateOpen] = useState(false);
   const [detailPhase, setDetailPhase] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [editingPhaseId, setEditingPhaseId] = useState<string | null>(null);
+  const [editingPhaseName, setEditingPhaseName] = useState("");
 
   // Critical path: set of phase IDs that have zero float
   const criticalPhaseIds = useMemo(() => {
@@ -204,6 +206,7 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
   const updatePhaseMut = trpc.phase.update.useMutation({
     onSuccess: (res) => {
       utils.phase.list.invalidate();
+      setEditingPhaseId(null);
       if (res.warnings?.length) {
         res.warnings.forEach((w: string) => toast.warning(w));
       }
@@ -478,8 +481,16 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
                     });
                   }
                 }}
-                onDoubleClick={() => {
-                  if (row.type === "phase") setDetailPhase(row.id);
+                onDoubleClick={(e) => {
+                  if (row.type === "phase") {
+                    // If double-click on the label span, start inline rename; otherwise open detail
+                    if ((e.target as HTMLElement).closest("[data-phase-label]")) {
+                      setEditingPhaseId(row.id);
+                      setEditingPhaseName(row.label);
+                    } else {
+                      setDetailPhase(row.id);
+                    }
+                  }
                 }}
               >
                 {row.type === "phase" && (
@@ -489,11 +500,44 @@ export function GanttChart({ projectId, projectKey, methodology }: GanttChartPro
                     ) : (
                       <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
-                    <div className="h-3 w-3 rounded-sm" style={{ backgroundColor: row.color }} />
+                    <div className="h-3 w-3 rounded-sm shrink-0" style={{ backgroundColor: row.color }} />
                   </>
                 )}
-                {row.type === "sprint" && <div className="h-2.5 w-2.5 rounded-full bg-blue-400 ml-1" />}
-                <span className="truncate font-medium">{row.label}</span>
+                {row.type === "sprint" && <div className="h-2.5 w-2.5 rounded-full bg-blue-400 ml-1 shrink-0" />}
+                {row.type === "phase" && editingPhaseId === row.id ? (
+                  <Input
+                    data-phase-label
+                    className="h-7 flex-1 min-w-0 text-sm font-medium"
+                    value={editingPhaseName}
+                    onChange={(e) => setEditingPhaseName(e.target.value)}
+                    onBlur={() => {
+                      if (editingPhaseName.trim()) {
+                        updatePhaseMut.mutate({ id: row.id, name: editingPhaseName.trim() });
+                      } else {
+                        setEditingPhaseId(null);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (editingPhaseName.trim()) {
+                          updatePhaseMut.mutate({ id: row.id, name: editingPhaseName.trim() });
+                        } else {
+                          setEditingPhaseId(null);
+                        }
+                      }
+                      if (e.key === "Escape") setEditingPhaseId(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    data-phase-label={row.type === "phase" ? true : undefined}
+                    className="truncate font-medium flex-1 min-w-0"
+                  >
+                    {row.label}
+                  </span>
+                )}
               </div>
             ))}
           </div>

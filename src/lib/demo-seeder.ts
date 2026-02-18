@@ -69,10 +69,10 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
   return db.$transaction(async (tx) => {
     const project = await tx.project.create({
       data: {
-        name: "Project Velvet - Hydra-Boost Shampoo",
+        name: "Project Velvet - Product Launch",
         key: "VELVET",
         description:
-          "Hybrid Stage-Gate + Agile project to launch a new sulfate-free, hydrating shampoo under the Project Velvet line.",
+          "Hybrid Stage-Gate + Agile project to launch a new product. Manage phases, sprints, and deliverables in one place.",
         methodology: "HYBRID",
         organizationId: organization.id,
       },
@@ -103,7 +103,7 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       tx.phase.create({
         data: {
           name: "Market Research & Concept",
-          description: "Consumer insights, positioning, and concept testing for the new Hydra-Boost shampoo.",
+          description: "Research, positioning, and concept validation.",
           color: "#3B82F6", // Blue
           position: 0,
           startDate: addDays(-90),
@@ -114,8 +114,8 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       }),
       tx.phase.create({
         data: {
-          name: "Formula Development",
-          description: "Lab work on sulfate-free base, actives, fragrance and viscosity targets.",
+          name: "Development",
+          description: "Core development and design work.",
           color: "#F97316", // Orange
           position: 1,
           startDate: addDays(-60),
@@ -126,8 +126,8 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       }),
       tx.phase.create({
         data: {
-          name: "Packaging Design",
-          description: "Bottle, cap and label design for an eco-friendly, premium look.",
+          name: "Design & Packaging",
+          description: "Design and packaging for launch.",
           color: "#8B5CF6", // Purple
           position: 2,
           startDate: addDays(-45),
@@ -138,8 +138,8 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       }),
       tx.phase.create({
         data: {
-          name: "Clinical Tests & Safety",
-          description: "Dermatological and safety testing for scalp tolerance and irritation.",
+          name: "Testing & Validation",
+          description: "Testing and quality validation.",
           color: "#EF4444", // Red
           position: 3,
           startDate: addDays(7),
@@ -151,7 +151,7 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       tx.phase.create({
         data: {
           name: "Go-to-Market Launch",
-          description: "Launch planning, channel activation and retail execution.",
+          description: "Launch planning and execution.",
           color: "#22C55E", // Green
           position: 4,
           startDate: addDays(30),
@@ -174,8 +174,8 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
 
     const sprint1 = await tx.sprint.create({
       data: {
-        name: "Base Formula Stability",
-        goal: "Validate base formula stability and pH safety for daily use.",
+        name: "Core Stability",
+        goal: "Validate core stability and safety for release.",
         startDate: addDays(-28),
         endDate: addDays(-14),
         status: "CLOSED",
@@ -187,8 +187,8 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
 
     const sprint2 = await tx.sprint.create({
       data: {
-        name: "Fragrance & Viscosity",
-        goal: "Optimize sensorial profile and viscosity for the Hydra-Boost shampoo.",
+        name: "Refinement & Polish",
+        goal: "Optimize profile and finalize for launch.",
         startDate: startOfWeek,
         endDate: endOfWeek,
         status: "ACTIVE",
@@ -198,11 +198,11 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       },
     });
 
-    // Features as Epics
+    // Features (Epics / Groups)
     const sulfateFreeFeature = await tx.feature.create({
       data: {
-        name: "Sulfate-Free Formula",
-        description: "Core technology for a gentle, hydrating shampoo without harsh surfactants.",
+        name: "Core Product",
+        description: "Core product development and features.",
         position: 0,
         projectId: project.id,
       },
@@ -210,8 +210,8 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
 
     const ecoBottleFeature = await tx.feature.create({
       data: {
-        name: "Eco-Friendly Bottle",
-        description: "100% rPET bottle with premium look and optimized shelf impact.",
+        name: "Packaging & Design",
+        description: "Packaging and design for launch.",
         position: 1,
         projectId: project.id,
       },
@@ -223,9 +223,9 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       data: {
         number: 1,
         title:
-          "As R&D, I want to finalize the pH balance so the shampoo is safe and gentle for daily use.",
+          "As a team member, I want to finalize core specs so the product is safe and ready for release.",
         description:
-          "Lock pH range between 4.5–5.5, validate against scalp irritation panel, and ensure compatibility with key actives.",
+          "Lock specification range, validate against quality panel, and ensure compatibility with requirements.",
         status: "IN_PROGRESS",
         priority: "HIGH",
         department: "R_AND_D",
@@ -250,13 +250,13 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
     await tx.task.createMany({
       data: [
         {
-          title: "Run viscosity test at 25°C for final base formula",
+          title: "Run final specification test",
           completed: false,
           position: 0,
           storyId: story1.id,
         },
         {
-          title: "Check preservative system compatibility across pH range",
+          title: "Check compatibility across specification range",
           completed: false,
           position: 1,
           storyId: story1.id,
@@ -269,9 +269,9 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
       data: {
         number: 2,
         title:
-          "As Marketing, I want a 100% rPET bottle design that signals premium, eco-conscious personal care.",
+          "As Marketing, I want packaging design that signals premium, quality positioning.",
         description:
-          "Align bottle silhouette, label layout and cap color with eco-positioning while staying on brand.",
+          "Align design, layout and branding with positioning while staying on brand.",
         status: "TODO",
         priority: "MEDIUM",
         department: "MARKETING",
@@ -295,7 +295,7 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
 
     await tx.task.create({
       data: {
-        title: "3D render of the bottle neck and shoulder area",
+        title: "3D render and design mockups",
         completed: false,
         position: 0,
         storyId: story2.id,
@@ -306,9 +306,9 @@ export async function seedDemoData(userId: string): Promise<SeedResult> {
     const story3 = await tx.userStory.create({
       data: {
         number: 3,
-        title: "Dermatological patch test for Hydra-Boost shampoo",
+        title: "Quality and safety validation",
         description:
-          "Plan dermatological patch test to confirm scalp tolerance on sensitive skin panel.",
+          "Plan validation tests to confirm quality and safety standards.",
         status: "BACKLOG",
         priority: "URGENT",
         department: "QUALITY",

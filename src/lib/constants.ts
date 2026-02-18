@@ -10,7 +10,7 @@ export const DEFAULT_SPRINT_COLUMNS = [
   { name: "Backlog", position: 0, colType: "BACKLOG" as const, boardType: "SPRINT_BOARD" as const },
   { name: "To Do", position: 1, colType: "TODO" as const, boardType: "SPRINT_BOARD" as const },
   { name: "In Progress", position: 2, colType: "DOING" as const, boardType: "SPRINT_BOARD" as const },
-  { name: "Evaluation / Lab", position: 3, colType: "DOING" as const, boardType: "SPRINT_BOARD" as const },
+  { name: "Evaluation / Review", position: 3, colType: "DOING" as const, boardType: "SPRINT_BOARD" as const },
   { name: "Done", position: 4, colType: "DONE" as const, boardType: "SPRINT_BOARD" as const },
 ] as const;
 
@@ -53,7 +53,7 @@ export const ROLES = {
   VIEWER: "VIEWER",
 } as const;
 
-// Departments (FMCG cross-functional teams)
+// Departments (cross-functional teams)
 export const DEPARTMENTS = [
   { value: "MARKETING", label: "Marketing", color: "#22C55E", shortLabel: "MKT" },
   { value: "R_AND_D", label: "R&D (ÜrGe)", color: "#3B82F6", shortLabel: "R&D" },
@@ -130,8 +130,8 @@ export const DEFAULT_DOR_ITEMS = [
 // Default DoD items for new stories
 export const DEFAULT_DOD_ITEMS = [
   "All tasks completed",
-  "Lab results documented",
-  "Regulatory check passed",
+  "Quality check passed",
+  "Review completed",
   "Stakeholder sign-off received",
 ] as const;
 
@@ -157,7 +157,7 @@ export function generateAccessCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-/** Generate a human-friendly 6-char join code for organizations, e.g. "ETI-9X" */
+/** Generate a human-friendly 6-char join code for organizations, e.g. "TEAM-9X" */
 export function generateJoinCode(seed: string): string {
   const base = (seed || "TEAM").replace(/[^A-Za-z]/g, "").toUpperCase() || "TEAM";
   const prefix = base.slice(0, 3).padEnd(3, "X");

@@ -16,8 +16,10 @@ export const storyRouter = createTRPCRouter({
           reporter: { select: { id: true, name: true, email: true, avatarUrl: true } },
           project: { select: { id: true, name: true, key: true, methodology: true } },
           feature: { select: { id: true, name: true } },
+          phase: { select: { id: true, name: true } },
           column: { select: { id: true, name: true, position: true } },
           labels: { include: { label: true } },
+          dependsOn: { include: { predecessor: { select: { id: true, number: true, title: true } } } },
           tasks: {
             include: { assignee: { select: { id: true, name: true, avatarUrl: true } } },
             orderBy: { position: "asc" },
@@ -50,6 +52,7 @@ export const storyRouter = createTRPCRouter({
       description: z.string().optional(),
       columnId: z.string().optional(),
       sprintId: z.string().nullable().optional(),
+      phaseId: z.string().nullable().optional(),
       featureId: z.string().nullable().optional(),
       priority: z.string().default("NONE"),
       department: z.string().nullable().optional(),
@@ -103,8 +106,9 @@ export const storyRouter = createTRPCRouter({
             : undefined,
           projectId: project.id,
           featureId: input.featureId ?? null,
+          phaseId: input.phaseId ?? null,
           columnId: targetColumnId,
-          sprintId: input.sprintId ?? null,
+          sprintId: isWaterfall ? null : (input.sprintId ?? null),
           assigneeId: input.assigneeId,
           reporterId: ctx.user.id,
           organizationId: ctx.organization.id,
@@ -140,6 +144,7 @@ export const storyRouter = createTRPCRouter({
       position: z.number().int().min(0).optional(),
       assigneeId: z.string().nullable().optional(),
       sprintId: z.string().nullable().optional(),
+      phaseId: z.string().nullable().optional(),
       featureId: z.string().nullable().optional(),
       storyPoints: z.number().int().min(0).nullable().optional(),
       userBusinessValue: z.number().int().min(0).max(10).optional(),
@@ -168,6 +173,7 @@ export const storyRouter = createTRPCRouter({
         columnId,
         assigneeId,
         sprintId,
+        phaseId,
         featureId,
         department,
         customValues,
@@ -211,6 +217,7 @@ export const storyRouter = createTRPCRouter({
       if (columnId !== undefined) updateData.column = columnId ? { connect: { id: columnId } } : { disconnect: true };
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
       if (sprintId !== undefined) updateData.sprint = sprintId ? { connect: { id: sprintId } } : { disconnect: true };
+      if (phaseId !== undefined) updateData.phase = phaseId ? { connect: { id: phaseId } } : { disconnect: true };
       if (featureId !== undefined) updateData.feature = featureId ? { connect: { id: featureId } } : { disconnect: true };
 
       if (story.project.methodology === "WATERFALL") {
@@ -351,6 +358,7 @@ export const storyRouter = createTRPCRouter({
         orderBy: [{ phaseId: "asc" }, { number: "asc" }],
         include: {
           phase: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true, email: true } },
           dependsOn: { include: { predecessor: { select: { id: true, number: true, title: true } } } },
         },
       });
@@ -364,6 +372,7 @@ export const storyRouter = createTRPCRouter({
         endDate: s.endDate,
         phaseId: s.phaseId,
         phaseName: s.phase?.name ?? null,
+        assignee: s.assignee ? { id: s.assignee.id, name: s.assignee.name ?? s.assignee.email } : null,
         predecessors: s.dependsOn.map((d) => d.predecessor),
         outlineLevel: s.outlineLevel,
         wbsIndex: s.wbsIndex,

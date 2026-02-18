@@ -10,9 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PRIORITIES, STORY_POINTS, STORY_STATUSES, DEPARTMENTS, WSJF_SCALE, calculateWSJF } from "@/lib/constants";
-import { User, Flag, Hash, Circle, Building2, BarChart3 } from "lucide-react";
+import { User, Flag, Hash, Circle, Building2, BarChart3, Calendar, Clock, Percent } from "lucide-react";
 import { useProjectTerminology } from "@/hooks/use-project-terminology";
+import { format } from "date-fns";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type StoryDetail = RouterOutputs["story"]["getById"];
@@ -34,6 +37,8 @@ export function StorySidebar({ story }: { story: StoryDetail }) {
 
   const terminology = useProjectTerminology(story.project.methodology);
   const isWaterfall = terminology.isWaterfall;
+  const phasesQuery = trpc.phase.list.useQuery({ projectId: story.projectId }, { enabled: isWaterfall });
+  const phases = phasesQuery.data ?? [];
   const wsjf = isWaterfall
     ? 0
     : calculateWSJF(
@@ -142,18 +147,92 @@ export function StorySidebar({ story }: { story: StoryDetail }) {
           </div>
         )}
 
-        {/* Feature (Stage) */}
-        <div className="space-y-1">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">Feature (Stage)</label>
-          <Select value={story.featureId ?? "none"} onValueChange={(v) => update({ featureId: v === "none" ? null : v })}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none" className="text-xs">None</SelectItem>
-              {features.data?.map((f) => <SelectItem key={f.id} value={f.id} className="text-xs">{f.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Phase (Waterfall) or Feature (Agile) */}
+        {isWaterfall ? (
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">{terminology.groupSingular}</label>
+            <Select value={story.phaseId ?? "none"} onValueChange={(v) => update({ phaseId: v === "none" ? null : v })}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="text-xs">None</SelectItem>
+                {phases.map((p: { id: string; name: string }) => (
+                  <SelectItem key={p.id} value={p.id} className="text-xs">{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">Feature (Stage)</label>
+            <Select value={story.featureId ?? "none"} onValueChange={(v) => update({ featureId: v === "none" ? null : v })}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="text-xs">None</SelectItem>
+                {features.data?.map((f) => <SelectItem key={f.id} value={f.id} className="text-xs">{f.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
+
+      {/* Waterfall: Start, End, Duration, % Complete, Predecessors */}
+      {isWaterfall && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+          <span className="text-xs font-semibold">Schedule</span>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Start Date</label>
+              <Input
+                type="date"
+                className="h-8 text-xs"
+                value={story.startDate ? format(new Date(story.startDate), "yyyy-MM-dd") : ""}
+                onChange={(e) => update({ startDate: e.target.value || undefined })}
+              />
+            </div>
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> End Date</label>
+              <Input
+                type="date"
+                className="h-8 text-xs"
+                value={story.endDate ? format(new Date(story.endDate), "yyyy-MM-dd") : ""}
+                onChange={(e) => update({ endDate: e.target.value || undefined })}
+              />
+            </div>
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Duration (days)</label>
+              <Input
+                type="number"
+                min={0}
+                step={0.5}
+                className="h-8 text-xs"
+                value={"duration" in story && story.duration != null ? story.duration : ""}
+                onChange={(e) => update({ duration: e.target.value ? parseFloat(e.target.value) : undefined })}
+              />
+            </div>
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground flex items-center gap-1"><Percent className="h-3 w-3" /> % Complete</label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                className="h-8 text-xs"
+                value={"progress" in story && story.progress != null ? story.progress : 0}
+                onChange={(e) => update({ progress: e.target.value ? parseInt(e.target.value, 10) : undefined })}
+              />
+            </div>
+          </div>
+          {"dependsOn" in story && Array.isArray(story.dependsOn) && story.dependsOn.length > 0 && (
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground">Predecessors</label>
+              <p className="text-xs text-muted-foreground">
+                {story.dependsOn
+                  .map((d: { predecessor: { number: number; title: string } }) => `${d.predecessor.number}: ${d.predecessor.title}`)
+                  .join(", ")}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* WSJF Detail Fields */}
       {!isWaterfall && (

@@ -200,7 +200,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
 
             <div className="space-y-1.5">
               <Label htmlFor="projectDesc">Description (optional)</Label>
-              <Textarea id="projectDesc" placeholder="What is this NPD project about?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+              <Textarea id="projectDesc" placeholder="What is this project about?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
             </div>
 
             {/* Methodology summary badge */}

@@ -21,7 +21,7 @@ import { waterfallRouter } from "./routers/waterfall";
 
 /**
  * Root tRPC router — all sub-routers merged here.
- * Sprintify NPD: Fully Configurable Enterprise Platform.
+ * Sprintify: General-Purpose Hybrid Project Management Platform.
  */
 export const appRouter = createTRPCRouter({
   project: projectRouter,

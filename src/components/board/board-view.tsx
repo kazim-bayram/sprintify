@@ -195,7 +195,7 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
 
   return (
     <div className="flex h-full flex-col">
-      {/* Board Header — NPD terminology */}
+      {/* Board Header */}
       <div className="flex items-center justify-between border-b px-6 py-3">
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="font-mono">{project.key}</Badge>

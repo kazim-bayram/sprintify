@@ -19,7 +19,7 @@ const BACKLOG_COLUMNS = [
 const ALL_COLUMNS = [...SPRINT_COLUMNS, ...BACKLOG_COLUMNS];
 
 async function main() {
-  console.log("🌱 Seeding Sprintify NPD database...");
+  console.log("🌱 Seeding Sprintify database...");
 
   // Demo user
   const user = await prisma.user.upsert({
@@ -38,7 +38,7 @@ async function main() {
   const org = await prisma.organization.upsert({
     where: { slug: "demo-org" },
     update: {},
-    create: { name: "Demo FMCG Corp", slug: "demo-org", joinCode: "DEMO-1" },
+    create: { name: "Demo Organization", slug: "demo-org", joinCode: "DEMO-1" },
   });
   console.log(`  ✓ Organization: ${org.name}`);
 
@@ -175,7 +175,7 @@ async function main() {
   }
   console.log(`  ✓ DoD checklist: ${dodItems.length} items`);
 
-  console.log("\n✅ Seed complete! Sprintify NPD is ready.");
+  console.log("\n✅ Seed complete! Sprintify is ready.");
 }
 
 main()

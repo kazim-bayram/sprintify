@@ -141,7 +141,7 @@ export function TemplateEngine() {
                   id="tplName"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g., NPD Shampoo Launch (Waterfall)"
+                  placeholder="e.g., Product Launch (Waterfall)"
                 />
               </div>
               <div className="space-y-1.5">

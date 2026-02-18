@@ -24,7 +24,7 @@ export function ProjectList({ initialProjects }: { initialProjects: ProjectListI
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-sm text-muted-foreground">Manage your NPD projects and development boards.</p>
+          <p className="text-sm text-muted-foreground">Manage your projects and development boards.</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />New Project</Button>
       </div>
@@ -33,7 +33,7 @@ export function ProjectList({ initialProjects }: { initialProjects: ProjectListI
         <Card className="flex flex-col items-center justify-center py-16">
           <FolderKanban className="mb-4 h-12 w-12 text-muted-foreground/50" />
           <h3 className="mb-1 text-lg font-medium">No projects yet</h3>
-          <p className="mb-4 text-sm text-muted-foreground">Create your first NPD project to get started.</p>
+          <p className="mb-4 text-sm text-muted-foreground">Create your first project to get started.</p>
           <Button onClick={() => setDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Create Project</Button>
         </Card>
       ) : (

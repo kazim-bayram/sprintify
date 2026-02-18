@@ -1,8 +1,7 @@
 // =============================================================================
-// Sprintify NPD — FMCG New Product Development Agile Platform
+// Sprintify — General-Purpose Hybrid Project Management Platform
 // =============================================================================
-// Hybrid Agile: Stage-Gate + Scrum for R&D, Marketing, Packaging, Quality teams.
-// Hierarchy: Organization > Program > Project > Feature (Stage) > UserStory > Task
+// Agile + Waterfall + Hybrid. Hierarchy: Organization > Program > Project > Feature/Phase > UserStory/Task > Task
 // =============================================================================
 
 generator client {

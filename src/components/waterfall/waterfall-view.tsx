@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,17 @@ import {
   Link2,
   Save,
   Play,
-  GanttChart,
+  Plus,
+  Columns3,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { CreateStoryDialog } from "@/components/stories/create-story-dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -34,6 +43,36 @@ interface WaterfallViewProps {
 const ROW_HEIGHT = 36;
 const DAY_WIDTH = 4; // pixels per day
 const MIN_BAR_WIDTH = 20;
+const GANTT_COLUMNS_KEY = "sprintify-gantt-columns";
+
+function getColumnPrefs(projectId: string): { start: boolean; end: boolean; duration: boolean; assignedTo: boolean } {
+  if (typeof window === "undefined") return { start: true, end: true, duration: true, assignedTo: true };
+  try {
+    const raw = localStorage.getItem(GANTT_COLUMNS_KEY);
+    if (!raw) return { start: true, end: true, duration: true, assignedTo: true };
+    const parsed = JSON.parse(raw) as Record<string, { start?: boolean; end?: boolean; duration?: boolean; assignedTo?: boolean }>;
+    const prefs = parsed[projectId];
+    return {
+      start: prefs?.start ?? true,
+      end: prefs?.end ?? true,
+      duration: prefs?.duration ?? true,
+      assignedTo: prefs?.assignedTo ?? true,
+    };
+  } catch {
+    return { start: true, end: true, duration: true, assignedTo: true };
+  }
+}
+
+function saveColumnPrefsToStorage(projectId: string, prefs: { start: boolean; end: boolean; duration: boolean; assignedTo: boolean }) {
+  try {
+    const raw = localStorage.getItem(GANTT_COLUMNS_KEY);
+    const all = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    all[projectId] = prefs;
+    localStorage.setItem(GANTT_COLUMNS_KEY, JSON.stringify(all));
+  } catch {
+    // ignore
+  }
+}
 
 function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
@@ -59,8 +98,28 @@ export function WaterfallView({ projectId, projectKey, methodology }: WaterfallV
   const [editingCell, setEditingCell] = useState<{ id: string; field: string; value: string } | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [linkingFrom, setLinkingFrom] = useState<string | null>(null);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [columnPrefs, setColumnPrefsState] = useState<{ start: boolean; end: boolean; duration: boolean; assignedTo: boolean }>({
+    start: true,
+    end: true,
+    duration: true,
+    assignedTo: true,
+  });
+
+  useEffect(() => {
+    setColumnPrefsState(getColumnPrefs(projectId));
+  }, [projectId]);
+
+  function setColumnPrefs(next: Partial<{ start: boolean; end: boolean; duration: boolean; assignedTo: boolean }>) {
+    const merged = { ...columnPrefs, ...next };
+    setColumnPrefsState(merged);
+    saveColumnPrefsToStorage(projectId, merged);
+  }
 
   const wbsQuery = trpc.story.listWbs.useQuery({ projectId }, { enabled: methodology !== "AGILE" });
+  const phasesQuery = trpc.phase.list.useQuery({ projectId }, { enabled: methodology !== "AGILE" });
+  const phases = phasesQuery.data ?? [];
+  const defaultPhaseId = phases[0]?.id ?? null;
   const updateStory = trpc.story.update.useMutation({
     onSuccess: () => {
       toast.success("Task updated");
@@ -240,6 +299,33 @@ export function WaterfallView({ projectId, projectKey, methodology }: WaterfallV
         <h2 className="text-lg font-semibold">WBS & Gantt</h2>
         <Badge variant="outline" className="text-xs">{methodology}</Badge>
         <div className="flex-1" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline">
+              <Columns3 className="mr-1 h-4 w-4" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem checked={columnPrefs.start} onCheckedChange={(v) => setColumnPrefs({ start: !!v })}>
+              Start
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={columnPrefs.end} onCheckedChange={(v) => setColumnPrefs({ end: !!v })}>
+              End
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={columnPrefs.duration} onCheckedChange={(v) => setColumnPrefs({ duration: !!v })}>
+              Duration
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked={columnPrefs.assignedTo} onCheckedChange={(v) => setColumnPrefs({ assignedTo: !!v })}>
+              Assigned To
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button size="sm" onClick={() => setAddTaskOpen(true)}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add Task
+        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -308,9 +394,10 @@ export function WaterfallView({ projectId, projectKey, methodology }: WaterfallV
                 <TableHead className="w-8"></TableHead>
                 <TableHead className="w-20">WBS ID</TableHead>
                 <TableHead>Task Name</TableHead>
-                <TableHead className="w-24">Duration</TableHead>
-                <TableHead className="w-32">Start</TableHead>
-                <TableHead className="w-32">Finish</TableHead>
+                {columnPrefs.duration && <TableHead className="w-24">Duration</TableHead>}
+                {columnPrefs.start && <TableHead className="w-32">Start</TableHead>}
+                {columnPrefs.end && <TableHead className="w-32">Finish</TableHead>}
+                {columnPrefs.assignedTo && <TableHead className="w-32">Assigned To</TableHead>}
                 <TableHead className="w-40">Predecessors</TableHead>
               </TableRow>
             </TableHeader>
@@ -388,40 +475,51 @@ export function WaterfallView({ projectId, projectKey, methodology }: WaterfallV
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {editingCell?.id === task.id && editingCell.field === "duration" ? (
-                        <Input
-                          autoFocus
-                          type="number"
-                          className="h-7 w-20 text-xs"
-                          value={editingCell.value}
-                          onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
-                          onBlur={() => {
-                            const num = parseFloat(editingCell.value || "0");
-                            updateStory.mutate({ id: task.id, duration: isNaN(num) ? 0 : num });
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                            if (e.key === "Escape") setEditingCell(null);
-                          }}
-                        />
-                      ) : (
-                        <span
-                          className="text-xs"
-                          onDoubleClick={() =>
-                            setEditingCell({ id: task.id, field: "duration", value: String(task.duration) })
-                          }
-                        >
-                          {task.duration}d
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {start ? format(start, "MMM d, yyyy") : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {end ? format(end, "MMM d, yyyy") : "—"}
-                    </TableCell>
+                    {columnPrefs.duration && (
+                      <TableCell>
+                        {editingCell?.id === task.id && editingCell.field === "duration" ? (
+                          <Input
+                            autoFocus
+                            type="number"
+                            className="h-7 w-20 text-xs"
+                            value={editingCell.value}
+                            onChange={(e) => setEditingCell({ ...editingCell, value: e.target.value })}
+                            onBlur={() => {
+                              const num = parseFloat(editingCell.value || "0");
+                              updateStory.mutate({ id: task.id, duration: isNaN(num) ? 0 : num });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              if (e.key === "Escape") setEditingCell(null);
+                            }}
+                          />
+                        ) : (
+                          <span
+                            className="text-xs"
+                            onDoubleClick={() =>
+                              setEditingCell({ id: task.id, field: "duration", value: String(task.duration) })
+                            }
+                          >
+                            {task.duration}d
+                          </span>
+                        )}
+                      </TableCell>
+                    )}
+                    {columnPrefs.start && (
+                      <TableCell className="text-xs">
+                        {start ? format(start, "MMM d, yyyy") : "—"}
+                      </TableCell>
+                    )}
+                    {columnPrefs.end && (
+                      <TableCell className="text-xs">
+                        {end ? format(end, "MMM d, yyyy") : "—"}
+                      </TableCell>
+                    )}
+                    {columnPrefs.assignedTo && (
+                      <TableCell className="text-xs text-muted-foreground">
+                        {"assignee" in task && task.assignee ? (task.assignee as { name: string }).name : "—"}
+                      </TableCell>
+                    )}
                     <TableCell className="text-xs text-muted-foreground">
                       {task.predecessors.length > 0
                         ? task.predecessors.map((p) => p.number).join(", ")
@@ -569,6 +667,16 @@ export function WaterfallView({ projectId, projectKey, methodology }: WaterfallV
           </div>
         </div>
       </div>
+
+      <CreateStoryDialog
+        open={addTaskOpen}
+        onOpenChange={setAddTaskOpen}
+        projectId={projectId}
+        projectKey={projectKey}
+        boardType="SPRINT_BOARD"
+        methodology={methodology}
+        defaultPhaseId={defaultPhaseId}
+      />
     </div>
   );
 }

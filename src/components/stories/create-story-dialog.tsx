@@ -26,6 +26,8 @@ interface CreateStoryDialogProps {
   boardType: "SPRINT_BOARD" | "GLOBAL_PRODUCT_BACKLOG";
   methodology: MethodologyValue;
   columnId?: string;
+  /** For Waterfall: default phase when opening from Gantt/WBS (no Sprint). */
+  defaultPhaseId?: string | null;
 }
 
 export function CreateStoryDialog({
@@ -36,6 +38,7 @@ export function CreateStoryDialog({
   boardType,
   methodology,
   columnId,
+  defaultPhaseId,
 }: CreateStoryDialogProps) {
   const router = useRouter();
   const titleRef = useRef<HTMLInputElement>(null);
@@ -60,8 +63,14 @@ export function CreateStoryDialog({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [durationDays, setDurationDays] = useState("");
+  const [phaseId, setPhaseId] = useState<string | null>(defaultPhaseId ?? null);
 
   const members = trpc.member.list.useQuery();
+  const phasesQuery = trpc.phase.list.useQuery(
+    { projectId },
+    { enabled: (isWaterfall || isHybrid) && !!projectId }
+  );
+  const phases = phasesQuery.data ?? [];
   const fieldDefs = trpc.admin.listFields.useQuery();
   const utils = trpc.useUtils();
 
@@ -138,6 +147,7 @@ export function CreateStoryDialog({
     setUserBusinessValue("0"); setTimeCriticality("0"); setRiskReduction("0"); setJobSize("1");
     setCustomValues({});
     setStartDate(""); setEndDate(""); setDurationDays("");
+    setPhaseId(defaultPhaseId ?? null);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -168,6 +178,7 @@ export function CreateStoryDialog({
       department: department === "none" ? null : department,
       storyPoints: isWaterfall ? null : storyPoints === "none" ? null : parseInt(storyPoints),
       assigneeId: assigneeId === "unassigned" ? undefined : assigneeId,
+      phaseId: (isWaterfall || isHybrid) ? (phaseId ?? null) : undefined,
       userBusinessValue: isWaterfall ? 0 : parseInt(userBusinessValue),
       timeCriticality: isWaterfall ? 0 : parseInt(timeCriticality),
       riskReduction: isWaterfall ? 0 : parseInt(riskReduction),
@@ -177,6 +188,7 @@ export function CreateStoryDialog({
   }
 
   useEffect(() => { if (open) setTimeout(() => titleRef.current?.focus(), 100); }, [open]);
+  useEffect(() => { if (open && defaultPhaseId !== undefined) setPhaseId(defaultPhaseId ?? null); }, [open, defaultPhaseId]);
 
   const wsjf = isWaterfall
     ? 0
@@ -218,7 +230,13 @@ export function CreateStoryDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="storyDesc">Description (optional)</Label>
-            <Textarea id="storyDesc" placeholder="Acceptance criteria, context..." value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            <Textarea
+              id="storyDesc"
+              placeholder={isWaterfall ? "Details, notes..." : "Acceptance criteria, context..."}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
           </div>
 
           {/* Department + Priority */}
@@ -341,6 +359,22 @@ export function CreateStoryDialog({
             </div>
           )}
 
+          {/* Waterfall / Hybrid: Phase selector (no Sprint) */}
+          {(isWaterfall || isHybrid) && phases.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">{terminology.groupSingular}</Label>
+              <Select value={phaseId ?? "none"} onValueChange={(v) => setPhaseId(v === "none" ? null : v)}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={`Select ${terminology.groupSingular.toLowerCase()}...`} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {phases.map((p: { id: string; name: string }) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Waterfall / Hybrid scheduling */}
           {(isWaterfall || isHybrid) && (
             <div className="grid grid-cols-3 gap-3">
@@ -398,7 +432,7 @@ export function CreateStoryDialog({
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => { onOpenChange(false); resetForm(); }}>Cancel</Button>
-            <Button type="submit" disabled={createStory.isPending || !title}>{createStory.isPending ? "Creating..." : "Create Story"}</Button>
+            <Button type="submit" disabled={createStory.isPending || !title}>{createStory.isPending ? "Creating..." : `Create ${terminology.ticketSingular}`}</Button>
           </div>
         </form>
       </DialogContent>
