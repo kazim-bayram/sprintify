@@ -29,6 +29,7 @@ import { TicketCard } from "./ticket-card";
 import { SprintBar } from "../sprint/sprint-bar";
 import { CreateSessionDialog } from "../poker/create-session-dialog";
 import confetti from "canvas-confetti";
+import { useProjectTerminology } from "@/hooks/use-project-terminology";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ProjectWithBoard = RouterOutputs["project"]["getByKey"];
@@ -48,6 +49,8 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
     assigneeId: string;
     priority: string;
   }>({ search: "", assigneeId: "", priority: "" });
+
+  const terminology = useProjectTerminology(project.methodology);
 
   // ===================================================================
   // OPTIMISTIC UI: Track column state locally for instant DnD feedback
@@ -198,17 +201,20 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
           <Badge variant="outline" className="font-mono">{project.key}</Badge>
           <h1 className="text-lg font-semibold">{project.name}</h1>
           <span className="text-sm text-muted-foreground">
-            {project._count.stories} stor{project._count.stories !== 1 ? "ies" : "y"}
+            {project._count.stories}{" "}
+            {project._count.stories === 1 ? terminology.ticketSingular : terminology.ticketPlural}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setPokerDialogOpen(true)}>
-            <BarChart3 className="mr-1 h-4 w-4" />
-            Planning Poker
-          </Button>
+          {!terminology.isWaterfall && (
+            <Button size="sm" variant="outline" onClick={() => setPokerDialogOpen(true)}>
+              <BarChart3 className="mr-1 h-4 w-4" />
+              Planning Poker
+            </Button>
+          )}
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="mr-1 h-4 w-4" />
-            New Story
+            New {terminology.ticketSingular}
           </Button>
         </div>
       </div>
@@ -234,6 +240,7 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
                 key={column.id}
                 column={column}
                 projectKey={project.key}
+                methodology={project.methodology}
                 onAddStory={() => handleAddStory(column.id)}
                 onStoryClick={(storyId) => setSelectedStoryId(storyId)}
               />
@@ -245,7 +252,11 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
         <DragOverlay>
           {activeStory ? (
             <div className="w-72 rotate-2 opacity-90">
-              <TicketCard ticket={activeStory} projectKey={project.key} />
+              <TicketCard
+                ticket={activeStory}
+                projectKey={project.key}
+                methodology={project.methodology}
+              />
             </div>
           ) : null}
         </DragOverlay>
@@ -256,6 +267,8 @@ export function BoardView({ project, boardType = "SPRINT_BOARD" }: { project: Pr
         onOpenChange={setCreateDialogOpen}
         projectId={project.id}
         projectKey={project.key}
+        boardType={boardType}
+        methodology={project.methodology}
         columnId={targetColumnId ?? undefined}
       />
 

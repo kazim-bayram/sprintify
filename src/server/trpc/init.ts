@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { getCurrentUser, getActiveOrganization } from "@/server/auth";
+import { getCurrentUser, getActiveOrganization, getSupabaseAuthUser } from "@/server/auth";
 import { db } from "@/server/db";
 
 /**
@@ -8,12 +8,16 @@ import { db } from "@/server/db";
  * Contains the DB client and optionally the authenticated user.
  */
 export async function createTRPCContext() {
-  const user = await getCurrentUser();
+  const [user, supabaseUser] = await Promise.all([
+    getCurrentUser(),
+    getSupabaseAuthUser(),
+  ]);
   const orgContext = user ? await getActiveOrganization() : null;
 
   return {
     db,
     user,
+    supabaseUser,
     organization: orgContext?.organization ?? null,
     role: orgContext?.role ?? null,
   };
@@ -76,3 +80,18 @@ export const protectedProcedure = t.procedure.use(enforceAuth);
 
 // Org-scoped procedure — requires auth + active organization
 export const orgProcedure = t.procedure.use(enforceOrg);
+
+/**
+ * Soft gate for administrative actions that should only be available
+ * to users with a verified email address.
+ */
+export function requireVerifiedEmailForAdmin(ctx: TRPCContext) {
+  const confirmedAt = (ctx.supabaseUser as { email_confirmed_at?: string | null } | null)
+    ?.email_confirmed_at;
+  if (!confirmedAt) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Please verify your email to perform this administrative action.",
+    });
+  }
+}

@@ -75,6 +75,47 @@ export const organizationRouter = createTRPCRouter({
     }),
 
   /**
+   * Join an organization using its join code.
+   * Used by the soft sign-up flow after Supabase session is created.
+   */
+  joinByCode: protectedProcedure
+    .input(z.object({ code: z.string().min(3).max(16) }))
+    .mutation(async ({ ctx, input }) => {
+      const code = input.code.toUpperCase();
+      const org = await ctx.db.organization.findFirst({
+        where: { joinCode: code },
+      });
+
+      if (!org) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Team code not found. Please check and try again.",
+        });
+      }
+
+      const existing = await ctx.db.membership.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: ctx.user.id,
+            organizationId: org.id,
+          },
+        },
+      });
+
+      if (!existing) {
+        await ctx.db.membership.create({
+          data: {
+            userId: ctx.user.id,
+            organizationId: org.id,
+            role: "MEMBER",
+          },
+        });
+      }
+
+      return org;
+    }),
+
+  /**
    * Public lookup by join code — used during sign-up to validate team codes.
    */
   lookupByJoinCode: publicProcedure

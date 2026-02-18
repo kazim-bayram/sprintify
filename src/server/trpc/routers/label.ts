@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
+import { createTRPCRouter, orgProcedure, requireVerifiedEmailForAdmin } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
 import { logActivity, ACTIVITY_TYPES } from "@/server/activity";
 
@@ -20,6 +20,7 @@ export const labelRouter = createTRPCRouter({
   delete: orgProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN") throw new TRPCError({ code: "FORBIDDEN" });
       await ctx.db.label.delete({ where: { id: input.id } });
       return { success: true };

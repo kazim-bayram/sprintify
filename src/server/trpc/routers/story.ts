@@ -14,7 +14,7 @@ export const storyRouter = createTRPCRouter({
         include: {
           assignee: { select: { id: true, name: true, email: true, avatarUrl: true, department: true } },
           reporter: { select: { id: true, name: true, email: true, avatarUrl: true } },
-          project: { select: { id: true, name: true, key: true } },
+          project: { select: { id: true, name: true, key: true, methodology: true } },
           feature: { select: { id: true, name: true } },
           column: { select: { id: true, name: true, position: true } },
           labels: { include: { label: true } },
@@ -76,6 +76,14 @@ export const storyRouter = createTRPCRouter({
         ctx.db.userStory.count({ where: { projectId: project.id, columnId: targetColumnId } }),
       ]);
 
+      const isWaterfall = project.methodology === "WATERFALL";
+
+      const storyPoints = isWaterfall ? null : input.storyPoints ?? null;
+      const userBusinessValue = isWaterfall ? 0 : input.userBusinessValue;
+      const timeCriticality = isWaterfall ? 0 : input.timeCriticality;
+      const riskReduction = isWaterfall ? 0 : input.riskReduction;
+      const jobSize = isWaterfall ? 1 : input.jobSize;
+
       return ctx.db.userStory.create({
         data: {
           number: updatedProject.storyCounter,
@@ -83,14 +91,16 @@ export const storyRouter = createTRPCRouter({
           description: input.description,
           status: "BACKLOG",
           priority: input.priority,
-          department: input.department as any ?? null,
+          department: (input.department as any) ?? null,
           position: storyCount,
-          storyPoints: input.storyPoints ?? null,
-          userBusinessValue: input.userBusinessValue,
-          timeCriticality: input.timeCriticality,
-          riskReduction: input.riskReduction,
-          jobSize: input.jobSize,
-          customValues: input.customValues ? (input.customValues as Record<string, unknown>) as any : undefined,
+          storyPoints,
+          userBusinessValue,
+          timeCriticality,
+          riskReduction,
+          jobSize,
+          customValues: input.customValues
+            ? ((input.customValues as Record<string, unknown>) as any)
+            : undefined,
           projectId: project.id,
           featureId: input.featureId ?? null,
           columnId: targetColumnId,
@@ -100,8 +110,18 @@ export const storyRouter = createTRPCRouter({
           organizationId: ctx.organization.id,
         },
         include: {
-          assignee: { select: { id: true, name: true, email: true, avatarUrl: true, department: true } },
-          reporter: { select: { id: true, name: true, email: true, avatarUrl: true } },
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+              department: true,
+            },
+          },
+          reporter: {
+            select: { id: true, name: true, email: true, avatarUrl: true },
+          },
           labels: { include: { label: true } },
         },
       });
@@ -132,7 +152,10 @@ export const storyRouter = createTRPCRouter({
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
 
       const { id, columnId, assigneeId, sprintId, featureId, department, customValues, ...rest } = input;
-      const story = await ctx.db.userStory.findFirst({ where: { id, organizationId: ctx.organization.id } });
+      const story = await ctx.db.userStory.findFirst({
+        where: { id, organizationId: ctx.organization.id },
+        include: { project: { select: { methodology: true } } },
+      });
       if (!story) throw new TRPCError({ code: "NOT_FOUND" });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,6 +167,15 @@ export const storyRouter = createTRPCRouter({
       if (assigneeId !== undefined) updateData.assignee = assigneeId ? { connect: { id: assigneeId } } : { disconnect: true };
       if (sprintId !== undefined) updateData.sprint = sprintId ? { connect: { id: sprintId } } : { disconnect: true };
       if (featureId !== undefined) updateData.feature = featureId ? { connect: { id: featureId } } : { disconnect: true };
+
+      if (story.project.methodology === "WATERFALL") {
+        // Enforce Waterfall semantics on WSJF / points regardless of client input
+        updateData.storyPoints = null;
+        updateData.userBusinessValue = 0;
+        updateData.timeCriticality = 0;
+        updateData.riskReduction = 0;
+        updateData.jobSize = 1;
+      }
 
       const updated = await ctx.db.userStory.update({
         where: { id },

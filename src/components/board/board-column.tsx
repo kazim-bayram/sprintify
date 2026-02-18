@@ -20,11 +20,18 @@ interface BoardColumnProps {
     stories: any[];
   };
   projectKey: string;
+  methodology: "AGILE" | "WATERFALL" | "HYBRID";
   onAddStory: (columnId: string) => void;
   onStoryClick: (storyId: string) => void;
 }
 
-export function BoardColumn({ column, projectKey, onAddStory, onStoryClick }: BoardColumnProps) {
+export function BoardColumn({
+  column,
+  projectKey,
+  methodology,
+  onAddStory,
+  onStoryClick,
+}: BoardColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: "column" } });
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(column.name);
@@ -84,7 +91,13 @@ export function BoardColumn({ column, projectKey, onAddStory, onStoryClick }: Bo
       >
         <SortableContext items={column.stories.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
           {column.stories.map((story: any) => (
-            <SortableTicketCard key={story.id} ticket={story} projectKey={projectKey} onClick={() => onStoryClick(story.id)} />
+            <SortableTicketCard
+              key={story.id}
+              ticket={story}
+              projectKey={projectKey}
+              methodology={methodology}
+              onClick={() => onStoryClick(story.id)}
+            />
           ))}
         </SortableContext>
       </div>

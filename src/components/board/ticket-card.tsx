@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PRIORITIES, DEPARTMENTS, calculateWSJF } from "@/lib/constants";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { useProjectTerminology } from "@/hooks/use-project-terminology";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type Story =
@@ -15,10 +16,16 @@ type Story =
 interface TicketCardProps {
   ticket: Story;
   projectKey: string;
+  methodology: "AGILE" | "WATERFALL" | "HYBRID";
   onClick?: () => void;
 }
 
-export function TicketCard({ ticket: story, projectKey, onClick }: TicketCardProps) {
+export function TicketCard({ ticket: story, projectKey, methodology, onClick }: TicketCardProps) {
+  const terminology = useProjectTerminology(methodology);
+  const isWaterfall = terminology.isWaterfall;
+  const isAgile = terminology.isAgile;
+  const isHybrid = terminology.isHybrid;
+
   const priority = PRIORITIES.find((p) => p.value === (story.priority ?? "NONE"));
   const dept = DEPARTMENTS.find((d) => d.value === story.department);
   const wsjf = calculateWSJF(
@@ -50,7 +57,7 @@ export function TicketCard({ ticket: story, projectKey, onClick }: TicketCardPro
             {dept.shortLabel}
           </Badge>
         )}
-        {wsjf > 0 && (
+        {!isWaterfall && wsjf > 0 && (
           <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-bold border-primary text-primary">
             WSJF {wsjf}
           </Badge>
@@ -63,8 +70,8 @@ export function TicketCard({ ticket: story, projectKey, onClick }: TicketCardPro
             {priority.label}
           </Badge>
         )}
-        {/* Story Points */}
-        {story.storyPoints != null && (
+        {/* Story Points (Agile / Hybrid only) */}
+        {(isAgile || isHybrid) && story.storyPoints != null && (
           <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
             {story.storyPoints}
           </span>
@@ -93,6 +100,21 @@ export function TicketCard({ ticket: story, projectKey, onClick }: TicketCardPro
           )}
           {story._count.tasks > 0 && (
             <span className="text-[10px] text-muted-foreground">{story._count.tasks} tasks</span>
+          )}
+          {/* Waterfall: show phase due date + progress */}
+          {isWaterfall && story.phase && (
+            <span className="text-[10px] text-muted-foreground">
+              {story.phase.endDate && (
+                <>Due {new Date(story.phase.endDate).toLocaleDateString()} · </>
+              )}
+              {typeof story.phase.progress === "number" && `${story.phase.progress}%`}
+            </span>
+          )}
+          {/* Agile: show sprint name */}
+          {isAgile && story.sprint && (
+            <span className="text-[10px] text-muted-foreground">
+              Sprint: {story.sprint.name}
+            </span>
           )}
         </div>
 

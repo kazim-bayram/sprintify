@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { PRIORITIES, STORY_POINTS, STORY_STATUSES, DEPARTMENTS, WSJF_SCALE, calculateWSJF } from "@/lib/constants";
 import { User, Flag, Hash, Circle, Building2, BarChart3 } from "lucide-react";
+import { useProjectTerminology } from "@/hooks/use-project-terminology";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type StoryDetail = RouterOutputs["story"]["getById"];
@@ -31,12 +32,21 @@ export function StorySidebar({ story }: { story: StoryDetail }) {
     updateMutation.mutate({ id: story.id, ...data });
   }
 
-  const wsjf = calculateWSJF(story.userBusinessValue, story.timeCriticality, story.riskReduction, story.jobSize);
+  const terminology = useProjectTerminology(story.project.methodology);
+  const isWaterfall = terminology.isWaterfall;
+  const wsjf = isWaterfall
+    ? 0
+    : calculateWSJF(
+        story.userBusinessValue,
+        story.timeCriticality,
+        story.riskReduction,
+        story.jobSize,
+      );
 
   return (
     <div className="space-y-3 text-sm">
       {/* WSJF Score Highlight */}
-      {wsjf > 0 && (
+      {!isWaterfall && wsjf > 0 && (
         <div className="flex items-center gap-2 rounded-md border-l-4 border-primary bg-primary/5 px-3 py-2">
           <BarChart3 className="h-4 w-4 text-primary" />
           <span className="text-xs font-medium text-muted-foreground">WSJF Score</span>
@@ -106,16 +116,31 @@ export function StorySidebar({ story }: { story: StoryDetail }) {
         </div>
 
         {/* Story Points */}
-        <div className="space-y-1">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><Hash className="h-3 w-3" /> Story Points</label>
-          <Select value={story.storyPoints?.toString() ?? "none"} onValueChange={(v) => update({ storyPoints: v === "none" ? null : parseInt(v) })}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none" className="text-xs">None</SelectItem>
-              {STORY_POINTS.map((sp) => <SelectItem key={sp} value={sp.toString()} className="text-xs">{sp} point{sp !== 1 ? "s" : ""}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        {!isWaterfall && (
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Hash className="h-3 w-3" /> Story Points
+            </label>
+            <Select
+              value={story.storyPoints?.toString() ?? "none"}
+              onValueChange={(v) => update({ storyPoints: v === "none" ? null : parseInt(v) })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="text-xs">
+                  None
+                </SelectItem>
+                {STORY_POINTS.map((sp) => (
+                  <SelectItem key={sp} value={sp.toString()} className="text-xs">
+                    {sp} point{sp !== 1 ? "s" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Feature (Stage) */}
         <div className="space-y-1">
@@ -131,39 +156,85 @@ export function StorySidebar({ story }: { story: StoryDetail }) {
       </div>
 
       {/* WSJF Detail Fields */}
-      <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-        <span className="text-xs font-semibold">WSJF Breakdown</span>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="space-y-0.5">
-            <label className="text-[10px] text-muted-foreground">Value</label>
-            <Select value={story.userBusinessValue.toString()} onValueChange={(v) => update({ userBusinessValue: parseInt(v) })}>
-              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>{[0, ...WSJF_SCALE].map((v) => <SelectItem key={v} value={v.toString()} className="text-xs">{v}</SelectItem>)}</SelectContent>
-            </Select>
+      {!isWaterfall && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <span className="text-xs font-semibold">WSJF Breakdown</span>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground">Value</label>
+              <Select
+                value={story.userBusinessValue.toString()}
+                onValueChange={(v) => update({ userBusinessValue: parseInt(v) })}
+              >
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, ...WSJF_SCALE].map((v) => (
+                    <SelectItem key={v} value={v.toString()} className="text-xs">
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground">Criticality</label>
+              <Select
+                value={story.timeCriticality.toString()}
+                onValueChange={(v) => update({ timeCriticality: parseInt(v) })}
+              >
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, ...WSJF_SCALE].map((v) => (
+                    <SelectItem key={v} value={v.toString()} className="text-xs">
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-0.5">
+              <label className="text-[10px] text-muted-foreground">Risk</label>
+              <Select
+                value={story.riskReduction.toString()}
+                onValueChange={(v) => update({ riskReduction: parseInt(v) })}
+              >
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, ...WSJF_SCALE].map((v) => (
+                    <SelectItem key={v} value={v.toString()} className="text-xs">
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-0.5">
-            <label className="text-[10px] text-muted-foreground">Criticality</label>
-            <Select value={story.timeCriticality.toString()} onValueChange={(v) => update({ timeCriticality: parseInt(v) })}>
-              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>{[0, ...WSJF_SCALE].map((v) => <SelectItem key={v} value={v.toString()} className="text-xs">{v}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-0.5">
-            <label className="text-[10px] text-muted-foreground">Risk</label>
-            <Select value={story.riskReduction.toString()} onValueChange={(v) => update({ riskReduction: parseInt(v) })}>
-              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>{[0, ...WSJF_SCALE].map((v) => <SelectItem key={v} value={v.toString()} className="text-xs">{v}</SelectItem>)}</SelectContent>
+            <label className="text-[10px] text-muted-foreground">Job Size</label>
+            <Select
+              value={story.jobSize.toString()}
+              onValueChange={(v) => update({ jobSize: parseInt(v) })}
+            >
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STORY_POINTS.map((sp) => (
+                  <SelectItem key={sp} value={sp.toString()} className="text-xs">
+                    {sp}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </div>
-        <div className="space-y-0.5">
-          <label className="text-[10px] text-muted-foreground">Job Size</label>
-          <Select value={story.jobSize.toString()} onValueChange={(v) => update({ jobSize: parseInt(v) })}>
-            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{STORY_POINTS.map((sp) => <SelectItem key={sp} value={sp.toString()} className="text-xs">{sp}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
 
       {/* Dynamic Custom Fields */}
       <CustomFieldsSection story={story} onUpdate={update} />

@@ -29,6 +29,7 @@ export default function SignUpPage() {
   const supabase = createClient();
   const router = useRouter();
   const utils = trpc.useUtils();
+  const joinOrg = trpc.organization.joinByCode.useMutation();
   const [checkingCode, setCheckingCode] = useState(false);
 
   async function handleGoogleSignUp() {
@@ -85,25 +86,9 @@ export default function SignUpPage() {
       return;
     }
 
-    let emailRedirectTo = `${window.location.origin}/auth/callback?next=/onboarding`;
-
-    if (mode === "join") {
-      const code = teamCode.trim().toUpperCase();
-      if (!code || !teamName) {
-        setMessage("Please validate your Team Code before signing up.");
-        setLoading(false);
-        return;
-      }
-      const params = new URLSearchParams({ joinCode: code, next: "/projects" });
-      emailRedirectTo = `${window.location.origin}/auth/callback?${params.toString()}`;
-    }
-
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo,
-      },
     });
 
     if (error) {
@@ -112,8 +97,27 @@ export default function SignUpPage() {
       return;
     }
 
-    // Go to verify page instead of dashboard
-    router.push(`/auth/verify?email=${encodeURIComponent(email)}`);
+    try {
+      if (mode === "join") {
+        const code = teamCode.trim().toUpperCase();
+        if (!code || !teamName) {
+          setMessage("Please validate your Team Code before signing up.");
+          setLoading(false);
+          return;
+        }
+        await joinOrg.mutateAsync({ code });
+        router.push("/projects");
+      } else {
+        // New workspace flow → onboarding
+        router.push("/onboarding");
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to attach you to the team. Please sign in and try again.";
+      setMessage(msg);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

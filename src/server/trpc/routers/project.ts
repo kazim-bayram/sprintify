@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
+import { createTRPCRouter, orgProcedure, requireVerifiedEmailForAdmin } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
 import { DEFAULT_BOARD_COLUMNS, DEFAULT_WATERFALL_PHASES } from "@/lib/constants";
 
@@ -88,6 +88,8 @@ export const projectRouter = createTRPCRouter({
                 include: {
                   assignee: { select: { id: true, name: true, email: true, avatarUrl: true, department: true } },
                   feature: { select: { id: true, name: true } },
+                  phase: { select: { id: true, name: true, startDate: true, endDate: true, progress: true } },
+                  sprint: { select: { id: true, name: true, status: true } },
                   labels: { include: { label: true } },
                   checklists: { where: { type: "DOD" }, select: { id: true, checked: true } },
                   _count: { select: { tasks: true } },
@@ -186,6 +188,7 @@ export const projectRouter = createTRPCRouter({
       wipLimit: z.number().int().min(1).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN") throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can manage columns." });
       const maxPos = await ctx.db.boardColumn.aggregate({
         where: { projectId: input.projectId, boardType: input.boardType },
@@ -206,6 +209,7 @@ export const projectRouter = createTRPCRouter({
       wipLimit: z.number().int().min(1).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN") throw new TRPCError({ code: "FORBIDDEN" });
       const column = await ctx.db.boardColumn.findUnique({
         where: { id: input.columnId },
@@ -224,6 +228,7 @@ export const projectRouter = createTRPCRouter({
   deleteColumn: orgProcedure
     .input(z.object({ columnId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN") throw new TRPCError({ code: "FORBIDDEN" });
       const column = await ctx.db.boardColumn.findUnique({
         where: { id: input.columnId },

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
+import { createTRPCRouter, orgProcedure, requireVerifiedEmailForAdmin } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
 
 /**
@@ -25,6 +25,7 @@ export const adminRouter = createTRPCRouter({
       isRequired: z.boolean().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN") throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can manage fields." });
 
       const existing = await ctx.db.fieldDefinition.findUnique({
@@ -56,6 +57,7 @@ export const adminRouter = createTRPCRouter({
       isRequired: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN") throw new TRPCError({ code: "FORBIDDEN" });
       const field = await ctx.db.fieldDefinition.findFirst({
         where: { id: input.id, organizationId: ctx.organization.id },
@@ -73,6 +75,7 @@ export const adminRouter = createTRPCRouter({
   deleteField: orgProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN") throw new TRPCError({ code: "FORBIDDEN" });
       const field = await ctx.db.fieldDefinition.findFirst({
         where: { id: input.id, organizationId: ctx.organization.id },

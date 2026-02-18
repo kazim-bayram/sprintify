@@ -52,11 +52,16 @@ export async function updateSession(request: NextRequest) {
   // - /sign-in, /sign-up, /auth/*
   // - /poker/* (guest access for planning poker rooms)
   // - /onboarding
+  // - /privacy and /legal/* (legal/compliance pages linked from footer)
+  // - /demo (live demo magic login + seeding)
   const isPublicRoute =
     pathname === "/" ||
     isAuthRoute ||
     pathname.startsWith("/poker") ||
-    pathname === "/onboarding";
+    pathname === "/onboarding" ||
+    pathname === "/privacy" ||
+    pathname === "/demo" ||
+    pathname.startsWith("/legal");
 
   function redirectWithCookies(url: URL) {
     const response = NextResponse.redirect(url);

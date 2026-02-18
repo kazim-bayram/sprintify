@@ -11,6 +11,7 @@ import { Hash } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { PRIORITIES, DEPARTMENTS, calculateWSJF } from "@/lib/constants";
+import { useProjectTerminology } from "@/hooks/use-project-terminology";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type ProjectWithBoard = RouterOutputs["project"]["getByKey"];
@@ -42,45 +43,78 @@ export function BacklogView({ project }: { project: ProjectWithBoard }) {
   const activeSprint = sprints?.find((s) => s.status === "ACTIVE");
   const totalBacklogPoints = sorted.reduce((sum, s) => sum + (s.storyPoints ?? 0), 0);
 
+  const terminology = useProjectTerminology(project.methodology);
+  const isWaterfall = terminology.isWaterfall;
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-6 py-3">
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="font-mono">{project.key}</Badge>
-          <h1 className="text-lg font-semibold">Backlog</h1>
-          <span className="text-sm text-muted-foreground">{sorted.length} stor{sorted.length !== 1 ? "ies" : "y"} · {totalBacklogPoints} pts</span>
+          <h1 className="text-lg font-semibold">{terminology.listLabel}</h1>
+          <span className="text-sm text-muted-foreground">
+            {sorted.length}{" "}
+            {sorted.length === 1 ? terminology.ticketSingular : terminology.ticketPlural}
+            {!isWaterfall && ` · ${totalBacklogPoints} pts`}
+          </span>
         </div>
       </div>
-      {activeSprint && (
+      {!isWaterfall && activeSprint && (
         <div className="border-b bg-muted/30 px-6 py-2 text-xs text-muted-foreground">
           Active sprint: <strong>{activeSprint.name}</strong> ({activeSprint._count.stories} stories)
         </div>
       )}
       <div className="flex-1 overflow-y-auto p-6">
         {sorted.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">No stories in the backlog. All are assigned to a sprint.</div>
+          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+            {isWaterfall
+              ? "No tasks defined in the WBS."
+              : "No stories in the backlog. All are assigned to a sprint."}
+          </div>
         ) : (
           <div className="space-y-2">
             {sorted.map((story) => {
               const priority = PRIORITIES.find((p) => p.value === (story.priority ?? "NONE"));
               const dept = DEPARTMENTS.find((d) => d.value === story.department);
-              const wsjf = calculateWSJF(story.userBusinessValue, story.timeCriticality, story.riskReduction, story.jobSize);
+              const wsjf = isWaterfall
+                ? 0
+                : calculateWSJF(
+                    story.userBusinessValue,
+                    story.timeCriticality,
+                    story.riskReduction,
+                    story.jobSize,
+                  );
               return (
                 <Card key={story.id} className="flex items-center gap-4 p-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-xs text-muted-foreground">{project.key}-{story.number}</span>
                       {dept && <Badge style={{ backgroundColor: dept.color, color: "white" }} className="px-1.5 py-0 text-[10px]">{dept.shortLabel}</Badge>}
-                      {wsjf > 0 && <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-bold border-primary text-primary">WSJF {wsjf}</Badge>}
+                      {!isWaterfall && wsjf > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="px-1.5 py-0 text-[10px] font-bold border-primary text-primary"
+                        >
+                          WSJF {wsjf}
+                        </Badge>
+                      )}
                       {priority && priority.value !== "NONE" && <Badge variant={priority.color === "destructive" ? "destructive" : "secondary"} className="px-1.5 py-0 text-[10px]">{priority.label}</Badge>}
-                      {story.storyPoints != null && <Badge variant="outline" className="px-1.5 py-0 text-[10px] gap-0.5"><Hash className="h-2.5 w-2.5" />{story.storyPoints}</Badge>}
+                      {!isWaterfall && story.storyPoints != null && (
+                        <Badge
+                          variant="outline"
+                          className="px-1.5 py-0 text-[10px] gap-0.5"
+                        >
+                          <Hash className="h-2.5 w-2.5" />
+                          {story.storyPoints}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm font-medium mt-0.5 truncate">{story.title}</p>
                   </div>
                   {story.assignee && (
                     <Avatar className="h-6 w-6 shrink-0"><AvatarImage src={story.assignee.avatarUrl ?? undefined} /><AvatarFallback className="text-[8px]">{story.assignee.name?.charAt(0) ?? "?"}</AvatarFallback></Avatar>
                   )}
-                  {(activeSprint || planningSprints.length > 0) && (
+                  {!isWaterfall && (activeSprint || planningSprints.length > 0) && (
                     <Select onValueChange={(sprintId) => updateMutation.mutate({ id: story.id, sprintId })}>
                       <SelectTrigger className="w-36 h-8 text-xs shrink-0"><SelectValue placeholder="Add to sprint" /></SelectTrigger>
                       <SelectContent>

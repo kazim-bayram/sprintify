@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { APP_NAME } from "@/lib/constants";
 import { LandingFooter } from "@/components/landing/footer";
+import { LiveDemoButton } from "@/components/landing/live-demo-button";
 import {
   Zap, ArrowRight, Check, GanttChart, Kanban, BarChart3, Users, ShieldCheck,
   Layers, Target, Rocket, Building2, FlaskConical, Code2, Megaphone,
@@ -88,12 +89,7 @@ export default async function LandingPage() {
             >
               {isLoggedIn ? "Go to Dashboard" : "Start for Free"} <ArrowRight className="h-5 w-5" />
             </Link>
-            <a
-              href="#features"
-              className="inline-flex items-center gap-2 rounded-lg border px-8 py-3.5 text-base font-medium transition-colors hover:bg-muted"
-            >
-              Live Demo
-            </a>
+            <LiveDemoButton />
           </div>
 
           {/* Trust badges */}

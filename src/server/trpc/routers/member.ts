@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
+import { createTRPCRouter, orgProcedure, requireVerifiedEmailForAdmin } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
 
 export const memberRouter = createTRPCRouter({
@@ -23,6 +23,7 @@ export const memberRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN")
         throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can invite members." });
 
@@ -72,6 +73,7 @@ export const memberRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN")
         throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can change roles." });
 
@@ -106,6 +108,7 @@ export const memberRouter = createTRPCRouter({
   remove: orgProcedure
     .input(z.object({ membershipId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      requireVerifiedEmailForAdmin(ctx);
       if (ctx.role !== "ADMIN")
         throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can remove members." });
 

@@ -54,6 +54,7 @@ const HYBRID_NAV: NavItem[] = [
 const WATERFALL_NAV: NavItem[] = [
   { name: "Overview", segment: "overview", icon: Home },
   { name: "Gantt Chart", segment: "timeline", icon: GanttChart },
+   { name: "Task List", segment: "backlog", icon: ListTodo },
   { name: "Documents", segment: "waterfall-notice", icon: FileText },
 ];
 

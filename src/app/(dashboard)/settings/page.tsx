@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Users, Tags, Building2, Shield, Lock } from "lucide-react";
+import { Users, Tags, Building2, Shield, Lock, MailCheck } from "lucide-react";
 
 export const metadata = {
   title: "Settings — Sprintify",
@@ -37,6 +37,12 @@ const settingsSections = [
     href: "/settings",
     icon: Building2,
     disabled: true,
+  },
+  {
+    name: "Verify Email",
+    description: "Verify your email address to unlock admin features.",
+    href: "/settings/security",
+    icon: MailCheck,
   },
 ];
 

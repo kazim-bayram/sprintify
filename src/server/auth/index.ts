@@ -3,15 +3,23 @@ import { db } from "@/server/db";
 import { cache } from "react";
 
 /**
- * Get the currently authenticated user from Supabase + our DB.
+ * Raw Supabase user for the current session.
+ * Cached per request to avoid duplicate auth calls.
+ */
+export const getSupabaseAuthUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
+
+/**
+ * Get the currently authenticated app user from Supabase + our DB.
  * Cached per request to avoid multiple DB hits.
  */
 export const getCurrentUser = cache(async () => {
-  const supabase = await createClient();
-  const {
-    data: { user: supabaseUser },
-  } = await supabase.auth.getUser();
-
+  const supabaseUser = await getSupabaseAuthUser();
   if (!supabaseUser) return null;
 
   const user = await db.user.findUnique({
