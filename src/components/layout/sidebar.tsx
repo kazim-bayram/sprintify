@@ -44,12 +44,12 @@ const AGILE_NAV: NavItem[] = [
 
 const HYBRID_NAV: NavItem[] = [
   { name: "Overview", segment: "overview", icon: Home },
+  { name: "Roadmap", segment: "timeline", icon: Map },
   { name: "Timeline", segment: "timeline", icon: GanttChart },
   { name: "Sprint Board", segment: "board", icon: Kanban },
   { name: "Product Backlog", segment: "product-backlog", icon: Package },
   { name: "Backlog List", segment: "backlog", icon: ListTodo },
   { name: "Sprints", segment: "sprints", icon: Timer },
-  { name: "Roadmap", segment: "planner", icon: Map },
 ];
 
 const WATERFALL_NAV: NavItem[] = [
@@ -119,27 +119,32 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {navigation.map((item) => {
-          const isActive =
-            item.href === "/projects"
-              ? pathname === "/projects"
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.name}
-            </Link>
-          );
-        })}
+        {navigation
+          .filter((item) => {
+            if (item.name !== "Planning Poker") return true;
+            return methodology !== "WATERFALL";
+          })
+          .map((item) => {
+            const isActive =
+              item.href === "/projects"
+                ? pathname === "/projects"
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.name}
+              </Link>
+            );
+          })}
 
         {/* Context-aware project sub-navigation */}
         {projectSubNav.length > 0 && (

@@ -157,7 +157,7 @@ export function PromoteToProjectDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Program (Brand / Category)</Label>
+              <Label>Program (Team / Initiative)</Label>
               <Select value={programId} onValueChange={setProgramId}>
                 <SelectTrigger>
                   <SelectValue placeholder="None" />

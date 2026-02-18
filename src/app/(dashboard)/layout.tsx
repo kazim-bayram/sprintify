@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { UnverifiedEmailBanner } from "@/components/layout/unverified-email-banner";
+import { DemoUXWrapper } from "@/components/demo/demo-ux-wrapper";
 
 /**
  * Dashboard layout — wraps all authenticated routes with sidebar + topbar.
@@ -35,6 +36,7 @@ export default async function DashboardLayout({
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
+        <DemoUXWrapper />
         <UnverifiedEmailBanner isUnverified={isUnverified} email={supabaseUser?.email ?? user.email} />
         <Topbar
           user={{

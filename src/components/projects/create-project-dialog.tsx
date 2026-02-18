@@ -142,14 +142,14 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="projectName">Project Name</Label>
-              <Input id="projectName" placeholder="New Protein Bar Launch" value={name} onChange={(e) => handleNameChange(e.target.value)} required autoFocus />
+              <Input id="projectName" placeholder="e.g., Website Redesign 2026" value={name} onChange={(e) => handleNameChange(e.target.value)} required autoFocus />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="projectKey">Key <span className="text-xs text-muted-foreground">(used in story IDs like {key || "KEY"}-42)</span></Label>
-              <Input id="projectKey" placeholder="PROTBAR" value={key} onChange={(e) => setKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))} required className="font-mono uppercase" />
+              <Input id="projectKey" placeholder="WEBRD" value={key} onChange={(e) => setKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))} required className="font-mono uppercase" />
             </div>
             <div className="space-y-1.5">
-              <Label>Program (Brand / Category)</Label>
+              <Label>Program (Team / Initiative)</Label>
               <Select value={programId} onValueChange={setProgramId}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
@@ -192,7 +192,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
                   <Input id="projStart" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="projEnd">Target Launch Date</Label>
+                  <Label htmlFor="projEnd">Target Date</Label>
                   <Input id="projEnd" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
                 </div>
               </div>
@@ -200,7 +200,7 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
 
             <div className="space-y-1.5">
               <Label htmlFor="projectDesc">Description (optional)</Label>
-              <Textarea id="projectDesc" placeholder="What is this project about?" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+              <Textarea id="projectDesc" placeholder="Tracking development and design tasks..." value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
             </div>
 
             {/* Methodology summary badge */}

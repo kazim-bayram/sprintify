@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
+import { assertDemoPhaseLimit, assertDemoTaskLimit } from "@/server/demo-limits";
 
 /**
  * Phase router — CRUD for Waterfall/Hybrid phases with soft-validation warnings.
@@ -60,6 +61,9 @@ export const phaseRouter = createTRPCRouter({
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
+
+      await assertDemoPhaseLimit(ctx.db, input.projectId);
+      await assertDemoTaskLimit(ctx.db, input.projectId);
 
       const maxPos = await ctx.db.phase.aggregate({
         where: { projectId: input.projectId },

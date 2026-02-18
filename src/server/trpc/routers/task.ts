@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
+import { assertDemoTaskLimit } from "@/server/demo-limits";
 
 export const taskRouter = createTRPCRouter({
   /** List tasks for a user story */
@@ -24,6 +25,14 @@ export const taskRouter = createTRPCRouter({
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.role === "VIEWER") throw new TRPCError({ code: "FORBIDDEN" });
+
+      const story = await ctx.db.userStory.findFirst({
+        where: { id: input.storyId, organizationId: ctx.organization.id },
+        select: { projectId: true },
+      });
+      if (!story) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertDemoTaskLimit(ctx.db, story.projectId);
+
       const count = await ctx.db.task.count({ where: { storyId: input.storyId } });
       return ctx.db.task.create({
         data: {

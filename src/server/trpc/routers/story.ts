@@ -3,6 +3,7 @@ import { createTRPCRouter, orgProcedure } from "@/server/trpc/init";
 import { TRPCError } from "@trpc/server";
 import { logActivity, ACTIVITY_TYPES } from "@/server/activity";
 import { calculateWSJF } from "@/lib/constants";
+import { assertDemoTaskLimit } from "@/server/demo-limits";
 
 export const storyRouter = createTRPCRouter({
   /** Get a single user story by ID with all details */
@@ -72,6 +73,8 @@ export const storyRouter = createTRPCRouter({
         include: { boardColumns: { orderBy: { position: "asc" }, take: 1 } },
       });
       if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+
+      await assertDemoTaskLimit(ctx.db, project.id);
 
       const targetColumnId = input.columnId ?? project.boardColumns[0]?.id;
       const [updatedProject, storyCount] = await Promise.all([

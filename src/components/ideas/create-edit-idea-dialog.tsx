@@ -141,7 +141,7 @@ export function CreateEditIdeaDialog({ open, onOpenChange, ideaId }: CreateEditI
             <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
-              placeholder="e.g., Launch New Organic Shampoo Line"
+              placeholder="e.g., Q3 Marketing Campaign"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
