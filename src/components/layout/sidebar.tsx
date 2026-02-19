@@ -1,14 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban,
   ListTodo, Timer, Layers, Package, Shield, Grid3X3, BarChart3, GanttChart,
-  FileText, Map, Home, Lightbulb, PanelLeftClose, PanelLeftOpen, UsersRound, MessageSquare, type LucideIcon,
+  FileText, Map, Home, Lightbulb, ChevronLeft, ChevronRight, UsersRound, MessageSquare, type LucideIcon,
 } from "lucide-react";
-import { useSidebar } from "@/components/layout/dashboard-shell";
 import { APP_NAME } from "@/lib/constants";
 import { trpc } from "@/trpc/client";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +43,6 @@ const AGILE_NAV: NavItem[] = [
   { name: "Active Sprint", segment: "sprints", icon: Timer },
   { name: "Sprint Retrospective", segment: "retro", icon: MessageSquare },
   { name: "Planning Grid", segment: "planner", icon: Grid3X3 },
-  { name: "Planning Poker", customHref: "/poker", icon: BarChart3 },
 ];
 
 const HYBRID_NAV: NavItem[] = [
@@ -56,7 +55,6 @@ const HYBRID_NAV: NavItem[] = [
   { name: "Backlog List", segment: "backlog", icon: ListTodo },
   { name: "Sprints", segment: "sprints", icon: Timer },
   { name: "Sprint Retrospective", segment: "retro", icon: MessageSquare },
-  { name: "Planning Poker", customHref: "/poker", icon: BarChart3 },
 ];
 
 const WATERFALL_NAV: NavItem[] = [
@@ -96,9 +94,9 @@ export function Sidebar() {
   const methodology = methodologyQuery.data?.methodology ?? null;
   const projectName = methodologyQuery.data?.name;
 
-  const { isOpen, isMobile, toggle } = useSidebar();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Build context-aware sub-navigation
+  // Build context-aware sub-navigation (Planning Poker excluded — added only when AGILE/HYBRID)
   const projectSubNav = projectSlug && methodology
     ? (NAV_BY_METHODOLOGY[methodology] ?? AGILE_NAV).map((item) => ({
         name: item.name,
@@ -118,31 +116,29 @@ export function Sidebar() {
   const metaInfo = methodology ? METHODOLOGY_LABELS[methodology] : null;
 
   return (
-    <>
-      {/* Mobile overlay when sidebar open */}
-      {isMobile && isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          aria-hidden
-          onClick={toggle}
-        />
+    <aside
+      className={cn(
+        "flex h-full flex-col border-r bg-sidebar transition-all z-50 shrink-0",
+        isCollapsed ? "w-16 transition-all" : "w-64 transition-all"
       )}
-      <aside
-        className={cn(
-          "flex h-full flex-col border-r bg-sidebar transition-all duration-200 ease-in-out z-50 shrink-0",
-          isMobile ? (isOpen ? "fixed inset-y-0 left-0 w-60" : "fixed -translate-x-full w-60") : (isOpen ? "w-60" : "w-14")
-        )}
-      >
-      {/* Brand */}
-      <div className={cn("flex h-14 items-center gap-2 border-b px-4 shrink-0", !isOpen && "px-2")}>
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
+    >
+      {/* Brand + Toggle */}
+      <div className={cn("flex h-14 items-center gap-2 border-b shrink-0", isCollapsed ? "justify-center px-2" : "px-4")}>
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary">
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
-        {isOpen && <span className="text-lg font-bold tracking-tight truncate">{APP_NAME}</span>}
+        {!isCollapsed && <span className="text-lg font-bold tracking-tight truncate">{APP_NAME}</span>}
+        <button
+          onClick={() => setIsCollapsed((c) => !c)}
+          className={cn("ml-auto shrink-0 rounded p-1 hover:bg-sidebar-accent/50", isCollapsed && "ml-0")}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className={cn("flex-1 space-y-1 overflow-y-auto p-3", !isOpen && "p-2")}>
+      <nav className={cn("flex-1 space-y-1 overflow-y-auto", isCollapsed ? "p-2" : "p-3")}>
         {navigation.map((item) => {
             const isActive =
               item.href === "/projects"
@@ -157,12 +153,12 @@ export function Sidebar() {
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                  !isOpen && "justify-center px-2"
+                  isCollapsed && "justify-center px-2"
                 )}
-                title={!isOpen ? item.name : undefined}
+                title={isCollapsed ? item.name : undefined}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
-                {isOpen && item.name}
+                {!isCollapsed && item.name}
               </Link>
             );
           })}
@@ -171,7 +167,7 @@ export function Sidebar() {
         {projectSubNav.length > 0 && (
           <>
             <div className="my-2 border-t" />
-            {isOpen && (
+            {!isCollapsed && (
               <div className="flex items-center justify-between px-3 mb-1">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate max-w-[120px]">
                   {projectName ?? projectSlug?.toUpperCase()}
@@ -194,22 +190,39 @@ export function Sidebar() {
                     isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                    !isOpen && "justify-center px-2"
+                    isCollapsed && "justify-center px-2"
                   )}
-                  title={!isOpen ? item.name : undefined}
+                  title={isCollapsed ? item.name : undefined}
                 >
                   <item.icon className="h-3.5 w-3.5 shrink-0" />
-                  {isOpen && item.name}
+                  {!isCollapsed && item.name}
                 </Link>
               );
             })}
+            {/* Planning Poker: ONLY for AGILE/HYBRID projects */}
+            {(methodology === "AGILE" || methodology === "HYBRID") && projectSlug && (
+              <Link
+                href="/poker"
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  pathname.startsWith("/poker")
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                  isCollapsed && "justify-center px-2"
+                )}
+                title={isCollapsed ? "Planning Poker" : undefined}
+              >
+                <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+                {!isCollapsed && "Planning Poker"}
+              </Link>
+            )}
           </>
         )}
       </nav>
 
       {/* Footer */}
-      <div className={cn("border-t p-3 space-y-2 shrink-0", !isOpen && "p-2")}>
-        {isOpen ? (
+      <div className={cn("border-t shrink-0", isCollapsed ? "p-2" : "p-3 space-y-2")}>
+        {!isCollapsed && (
           <>
             <div className="flex items-center gap-2 px-3 text-xs text-muted-foreground">
               <Command className="h-3 w-3" />
@@ -217,21 +230,10 @@ export function Sidebar() {
                 <kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">⌘K</kbd> to search
               </span>
             </div>
-            <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.8.0 — Context-Aware</p>
+            <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.8.0</p>
           </>
-        ) : null}
-        {!isMobile && (
-          <button
-            onClick={toggle}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-            title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            {isOpen ? <PanelLeftClose className="h-4 w-4 shrink-0" /> : <PanelLeftOpen className="h-4 w-4 shrink-0" />}
-            {isOpen && <span>Collapse</span>}
-          </button>
         )}
       </div>
     </aside>
-    </>
   );
 }

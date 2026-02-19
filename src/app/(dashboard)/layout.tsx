@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, getActiveOrganization, getSupabaseAuthUser } from "@/server/auth";
-import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { CommandPalette } from "@/components/layout/command-palette";
@@ -34,7 +33,6 @@ export default async function DashboardLayout({
   const isUnverified = !!supabaseUser && !supabaseUser.email_confirmed_at;
 
   return (
-    <DashboardShell>
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -52,6 +50,5 @@ export default async function DashboardLayout({
       </div>
       <CommandPalette />
     </div>
-    </DashboardShell>
   );
 }
