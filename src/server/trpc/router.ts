@@ -18,6 +18,7 @@ import { phaseRouter } from "./routers/phase";
 import { ideaRouter } from "./routers/idea";
 import { templateRouter } from "./routers/template";
 import { waterfallRouter } from "./routers/waterfall";
+import { retroRouter } from "./routers/retro";
 
 /**
  * Root tRPC router — all sub-routers merged here.
@@ -43,6 +44,7 @@ export const appRouter = createTRPCRouter({
   idea: ideaRouter,
   template: templateRouter,
   waterfall: waterfallRouter,
+  retro: retroRouter,
 });
 
 export type AppRouter = typeof appRouter;

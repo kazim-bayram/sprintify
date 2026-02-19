@@ -41,6 +41,8 @@ model User {
   hostedSessions       EstimationSession[]     @relation("SessionHost")
   estimationParticipations EstimationParticipant[]
 
+  retroCards RetroCard[]
+
   @@map("users")
 }
 
@@ -396,6 +398,7 @@ model Sprint {
   phase     Phase?           @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   stories   UserStory[]
   snapshots SprintSnapshot[]
+  retroBoard RetroBoard?
 
   @@index([projectId, status])
   @@index([organizationId])
@@ -422,6 +425,52 @@ model SprintSnapshot {
 
   @@unique([sprintId, date])
   @@map("sprint_snapshots")
+}
+
+// =============================================================================
+// Sprint Retrospective
+// =============================================================================
+
+model RetroBoard {
+  id        String        @id @default(cuid())
+  sprintId  String        @unique @map("sprint_id")
+  status    RetroStatus   @default(DRAFT)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  sprint Sprint      @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  cards  RetroCard[]
+
+  @@map("retro_boards")
+}
+
+enum RetroStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+}
+
+model RetroCard {
+  id        String        @id @default(cuid())
+  boardId   String        @map("board_id")
+  authorId  String        @map("author_id")
+  column    RetroColumn   @default(WENT_WELL)
+  content   String        @db.Text
+  votes     Int           @default(0)
+  convertedStoryId String? @map("converted_story_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  board  RetroBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, column])
+  @@map("retro_cards")
+}
+
+enum RetroColumn {
+  WENT_WELL
+  TO_IMPROVE
+  ACTION_ITEM
 }
 
 // =============================================================================

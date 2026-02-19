@@ -53,7 +53,7 @@ export async function updateSession(request: NextRequest) {
   // - /poker/* (guest access for planning poker rooms)
   // - /onboarding
   // - /privacy and /legal/* (legal/compliance pages linked from footer)
-  // - /demo (live demo magic login + seeding)
+  // - /demo and /api/demo (live demo magic login + ghost auth + seeding)
   const isPublicRoute =
     pathname === "/" ||
     isAuthRoute ||
@@ -61,6 +61,7 @@ export async function updateSession(request: NextRequest) {
     pathname === "/onboarding" ||
     pathname === "/privacy" ||
     pathname === "/demo" ||
+    pathname === "/api/demo" ||
     pathname.startsWith("/legal");
 
   function redirectWithCookies(url: URL) {

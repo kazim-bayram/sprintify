@@ -28,13 +28,14 @@ function formatCountdown(ms: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
-export function DemoBanner() {
+export function DemoBanner({ isDemoUser }: { isDemoUser?: boolean }) {
   const [show, setShow] = useState(false);
   const [countdown, setCountdown] = useState<string | null>(null);
 
   useEffect(() => {
     const session = getCookie(DEMO_SESSION_KEY);
-    if (!session) {
+    const inDemo = !!session || !!isDemoUser;
+    if (!inDemo) {
       setShow(false);
       return;
     }
@@ -61,22 +62,22 @@ export function DemoBanner() {
   if (!show) return null;
 
   return (
-    <div className="sticky top-0 z-50 w-full border-b border-indigo-600/30 bg-indigo-600 px-4 py-2 text-indigo-100 shadow-md">
+    <div className="sticky top-0 z-50 w-full border-b border-amber-500/30 bg-amber-500 px-4 py-2 text-amber-950 shadow-md">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium">
-          You are in a Live Demo Environment.
+          🚀 You are exploring a Live Demo environment. This sandbox will self-destruct in 24 hours.
         </span>
         <div className="flex items-center gap-4">
           {countdown !== null && (
             <span className="text-sm">
-              Session resets in: <strong className="font-mono">{countdown}</strong>
+              Resets in: <strong className="font-mono">{countdown}</strong>
             </span>
           )}
           <Link
             href="/sign-up"
-            className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-medium text-indigo-600 shadow-sm transition hover:bg-indigo-50"
+            className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-medium text-amber-700 shadow-sm transition hover:bg-amber-50"
           >
-            Save my progress (Sign Up)
+            Sign up to save progress
           </Link>
         </div>
       </div>

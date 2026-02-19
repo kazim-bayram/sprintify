@@ -6,8 +6,9 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FolderKanban, Settings, Users, Zap, Command, Kanban,
   ListTodo, Timer, Layers, Package, Shield, Grid3X3, BarChart3, GanttChart,
-  FileText, Map, Home, Lightbulb, type LucideIcon,
+  FileText, Map, Home, Lightbulb, PanelLeftClose, PanelLeftOpen, UsersRound, MessageSquare, type LucideIcon,
 } from "lucide-react";
+import { useSidebar } from "@/components/layout/dashboard-shell";
 import { APP_NAME } from "@/lib/constants";
 import { trpc } from "@/trpc/client";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,6 @@ const navigation = [
   { name: "Ideas", href: "/ideas", icon: Lightbulb },
   { name: "Programs", href: "/programs", icon: Layers },
   { name: "Projects", href: "/projects", icon: FolderKanban },
-  { name: "Planning Poker", href: "/poker", icon: BarChart3 },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Members", href: "/settings/members", icon: Users },
   { name: "Admin", href: "/admin/settings", icon: Shield },
@@ -29,17 +29,21 @@ const navigation = [
 
 interface NavItem {
   name: string;
-  segment: string; // appended to /projects/[slug]/
+  segment?: string;
+  customHref?: string;
   icon: LucideIcon;
 }
 
 const AGILE_NAV: NavItem[] = [
   { name: "Overview", segment: "overview", icon: Home },
   { name: "Sprint Board", segment: "board", icon: Kanban },
+  { name: "Daily Standup", segment: "daily", icon: UsersRound },
   { name: "Product Backlog", segment: "product-backlog", icon: Package },
   { name: "Backlog List", segment: "backlog", icon: ListTodo },
   { name: "Active Sprint", segment: "sprints", icon: Timer },
+  { name: "Sprint Retrospective", segment: "retro", icon: MessageSquare },
   { name: "Planning Grid", segment: "planner", icon: Grid3X3 },
+  { name: "Planning Poker", customHref: "/poker", icon: BarChart3 },
 ];
 
 const HYBRID_NAV: NavItem[] = [
@@ -47,9 +51,12 @@ const HYBRID_NAV: NavItem[] = [
   { name: "Roadmap", segment: "timeline", icon: Map },
   { name: "Timeline", segment: "timeline", icon: GanttChart },
   { name: "Sprint Board", segment: "board", icon: Kanban },
+  { name: "Daily Standup", segment: "daily", icon: UsersRound },
   { name: "Product Backlog", segment: "product-backlog", icon: Package },
   { name: "Backlog List", segment: "backlog", icon: ListTodo },
   { name: "Sprints", segment: "sprints", icon: Timer },
+  { name: "Sprint Retrospective", segment: "retro", icon: MessageSquare },
+  { name: "Planning Poker", customHref: "/poker", icon: BarChart3 },
 ];
 
 const WATERFALL_NAV: NavItem[] = [
@@ -89,42 +96,54 @@ export function Sidebar() {
   const methodology = methodologyQuery.data?.methodology ?? null;
   const projectName = methodologyQuery.data?.name;
 
+  const { isOpen, isMobile, toggle } = useSidebar();
+
   // Build context-aware sub-navigation
   const projectSubNav = projectSlug && methodology
     ? (NAV_BY_METHODOLOGY[methodology] ?? AGILE_NAV).map((item) => ({
         name: item.name,
-        href: `/projects/${projectSlug}/${item.segment}`,
+        href: item.customHref ?? `/projects/${projectSlug}/${item.segment}`,
         icon: item.icon,
       }))
     : projectSlug
-      // Still loading — show a minimal skeleton set
-      ? AGILE_NAV.slice(0, 3).map((item) => ({
-          name: item.name,
-          href: `/projects/${projectSlug}/${item.segment}`,
-          icon: item.icon,
-        }))
+      ? AGILE_NAV.slice(0, 3)
+          .filter((item) => item.segment)
+          .map((item) => ({
+            name: item.name,
+            href: `/projects/${projectSlug}/${item.segment}`,
+            icon: item.icon,
+          }))
       : [];
 
   const metaInfo = methodology ? METHODOLOGY_LABELS[methodology] : null;
 
   return (
-    <aside className="flex h-full w-60 flex-col border-r bg-sidebar">
+    <>
+      {/* Mobile overlay when sidebar open */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          aria-hidden
+          onClick={toggle}
+        />
+      )}
+      <aside
+        className={cn(
+          "flex h-full flex-col border-r bg-sidebar transition-all duration-200 ease-in-out z-50 shrink-0",
+          isMobile ? (isOpen ? "fixed inset-y-0 left-0 w-60" : "fixed -translate-x-full w-60") : (isOpen ? "w-60" : "w-14")
+        )}
+      >
       {/* Brand */}
-      <div className="flex h-14 items-center gap-2 border-b px-4">
+      <div className={cn("flex h-14 items-center gap-2 border-b px-4 shrink-0", !isOpen && "px-2")}>
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
-        <span className="text-lg font-bold tracking-tight">{APP_NAME}</span>
+        {isOpen && <span className="text-lg font-bold tracking-tight truncate">{APP_NAME}</span>}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {navigation
-          .filter((item) => {
-            if (item.name !== "Planning Poker") return true;
-            return methodology !== "WATERFALL";
-          })
-          .map((item) => {
+      <nav className={cn("flex-1 space-y-1 overflow-y-auto p-3", !isOpen && "p-2")}>
+        {navigation.map((item) => {
             const isActive =
               item.href === "/projects"
                 ? pathname === "/projects"
@@ -138,10 +157,12 @@ export function Sidebar() {
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                  !isOpen && "justify-center px-2"
                 )}
+                title={!isOpen ? item.name : undefined}
               >
-                <item.icon className="h-4 w-4" />
-                {item.name}
+                <item.icon className="h-4 w-4 shrink-0" />
+                {isOpen && item.name}
               </Link>
             );
           })}
@@ -150,16 +171,18 @@ export function Sidebar() {
         {projectSubNav.length > 0 && (
           <>
             <div className="my-2 border-t" />
-            <div className="flex items-center justify-between px-3 mb-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate max-w-[120px]">
-                {projectName ?? projectSlug?.toUpperCase()}
-              </p>
-              {metaInfo && (
-                <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 font-semibold", metaInfo.color)}>
-                  {metaInfo.label}
-                </Badge>
-              )}
-            </div>
+            {isOpen && (
+              <div className="flex items-center justify-between px-3 mb-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate max-w-[120px]">
+                  {projectName ?? projectSlug?.toUpperCase()}
+                </p>
+                {metaInfo && (
+                  <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 font-semibold", metaInfo.color)}>
+                    {metaInfo.label}
+                  </Badge>
+                )}
+              </div>
+            )}
             {projectSubNav.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -171,10 +194,12 @@ export function Sidebar() {
                     isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    !isOpen && "justify-center px-2"
                   )}
+                  title={!isOpen ? item.name : undefined}
                 >
-                  <item.icon className="h-3.5 w-3.5" />
-                  {item.name}
+                  <item.icon className="h-3.5 w-3.5 shrink-0" />
+                  {isOpen && item.name}
                 </Link>
               );
             })}
@@ -183,15 +208,30 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t p-3 space-y-2">
-        <div className="flex items-center gap-2 px-3 text-xs text-muted-foreground">
-          <Command className="h-3 w-3" />
-          <span>
-            <kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">⌘K</kbd> to search
-          </span>
-        </div>
-        <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.8.0 — Context-Aware</p>
+      <div className={cn("border-t p-3 space-y-2 shrink-0", !isOpen && "p-2")}>
+        {isOpen ? (
+          <>
+            <div className="flex items-center gap-2 px-3 text-xs text-muted-foreground">
+              <Command className="h-3 w-3" />
+              <span>
+                <kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">⌘K</kbd> to search
+              </span>
+            </div>
+            <p className="px-3 text-xs text-muted-foreground">{APP_NAME} v0.8.0 — Context-Aware</p>
+          </>
+        ) : null}
+        {!isMobile && (
+          <button
+            onClick={toggle}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+            title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {isOpen ? <PanelLeftClose className="h-4 w-4 shrink-0" /> : <PanelLeftOpen className="h-4 w-4 shrink-0" />}
+            {isOpen && <span>Collapse</span>}
+          </button>
+        )}
       </div>
     </aside>
+    </>
   );
 }

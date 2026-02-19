@@ -1,9 +1,11 @@
 "use client";
 
 import { trpc } from "@/trpc/client";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CalendarDays, Target } from "lucide-react";
+import { CalendarDays, Target, MessageSquare } from "lucide-react";
 
 export function SprintHistoryView({ projectId, projectKey }: { projectId: string; projectKey: string }) {
   const { data: closedSprints, isLoading } = trpc.sprint.history.useQuery({ projectId });
@@ -63,6 +65,11 @@ export function SprintHistoryView({ projectId, projectKey }: { projectId: string
                   <div><p className="text-lg font-bold">{total}</p><p className="text-[10px] text-muted-foreground">Total pts</p></div>
                   <div><p className="text-lg font-bold text-blue-600">{valCompleted}</p><p className="text-[10px] text-muted-foreground">Value</p></div>
                   <Badge variant={pct >= 80 ? "default" : pct >= 50 ? "secondary" : "destructive"} className="text-xs">{pct}%</Badge>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+                    <Link href={`/projects/${projectKey.toLowerCase()}/retro/${sprint.id}`}>
+                      <MessageSquare className="mr-1 h-3 w-3" />Retro
+                    </Link>
+                  </Button>
                 </div>
               </Card>
             );

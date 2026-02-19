@@ -209,7 +209,7 @@ function QuickAddTicket({
       <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
       <Input
         ref={inputRef}
-        placeholder={`+ Create new ${terminology.ticketSingular.toLowerCase()}...`}
+        placeholder="+ Add a new story to backlog... (Press Enter)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => {

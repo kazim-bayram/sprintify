@@ -1,17 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 export function LiveDemoButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleClick = () => {
     if (loading) return;
     setLoading(true);
-    router.push("/demo");
+    window.location.href = "/api/demo";
   };
 
   return (
@@ -24,7 +22,7 @@ export function LiveDemoButton() {
       {loading ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Preparing Live Demo…
+          Generating Sandbox…
         </>
       ) : (
         <>Live Demo</>

@@ -25,6 +25,27 @@ export const sprintRouter = createTRPCRouter({
       });
     }),
 
+  /** Full active sprint for Daily Stand-up: stories with assignee, column, labels, updatedAt */
+  getActiveForDaily: orgProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.sprint.findFirst({
+        where: { projectId: input.projectId, organizationId: ctx.organization.id, status: "ACTIVE" },
+        include: {
+          _count: { select: { stories: true } },
+          stories: {
+            where: { archivedAt: null },
+            include: {
+              assignee: { select: { id: true, name: true, email: true, avatarUrl: true } },
+              column: { select: { id: true, name: true, position: true, colType: true } },
+              labels: { include: { label: { select: { id: true, name: true, color: true } } } },
+            },
+            orderBy: { position: "asc" },
+          },
+        },
+      });
+    }),
+
   getById: orgProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
